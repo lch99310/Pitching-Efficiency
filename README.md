@@ -208,7 +208,7 @@ Every one of these arms lived *above* the league line for **fifteen to twenty se
 
 ## The 2026 watch
 
-With the 2026 season about 55% complete, here's the starter leaderboard so far:
+With the 2026 season about 55% complete (2026-07-10), here's the starter leaderboard so far:
 
 ![2026 OPE leaderboard](charts/12_ope_2026.png)
 
