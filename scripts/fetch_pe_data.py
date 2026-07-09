@@ -15,11 +15,17 @@ Nothing to install, no website logins, no manual merging.
 
 import csv
 import json
+import sys
 import time
 import urllib.request
 
-SEASONS = [2023, 2024, 2025]
-OUT_FILE = "pe_data.csv"
+# Seasons: pass years on the command line, e.g.  python3 fetch_pe_data.py 2026
+# With no arguments it pulls 2023-2025.
+if len(sys.argv) > 1:
+    SEASONS = [int(a) for a in sys.argv[1:]]
+else:
+    SEASONS = [2023, 2024, 2025]
+OUT_FILE = "pe_data_%s.csv" % "_".join(str(s) for s in SEASONS)
 BASE = "https://statsapi.mlb.com/api/v1/stats"
 
 # We dump EVERY stat field the API returns (so nothing is missed), plus
@@ -101,7 +107,7 @@ def main():
             w.writerow(row)
 
     print(f"\nDone. Wrote {len(all_rows)} rows x {len(cols)} cols -> {OUT_FILE}")
-    print("Send that single file back.")
+    print("Send that file back.")
 
 
 if __name__ == "__main__":

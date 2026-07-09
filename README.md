@@ -1,154 +1,139 @@
-# Pitching Efficiency (PE)：一個好懂、好算，又貼近實力的投手指標
+# Outs Per Effort (OPE): a simple pitching stat that sees what ERA misses
 
-*作者：Chung-Hao Lee ｜ 資料：MLB 官方 Stats API，2023–2025 三個球季，投球局數（IP）≥ 50，約 1,000 個投手球季*
-
----
-
-## 一個老問題：我們一直在「好懂」和「準確」之間二選一
-
-評價一位投手，棒球迷手上大致有兩種工具。
-
-一種是 **ERA（防禦率）**：人人都懂，算法簡單。但它有個致命盲點——**它只在乎「跑者有沒有回來得分」，不在乎「你被打得多慘」。** 一支被打穿全場、最後靠雙殺化解的局，和一支三上三下的局，在 ERA 眼裡可以完全一樣；被打一支一壘安打和被打一支全壘打，只要沒失分，帳面上也沒差別。ERA 看得到結果，看不到過程。
-
-另一種是像 **wRC+、xFIP、SIERA** 這類進階指標：它們很準，但**計算繁瑣、入門門檻高**，多數球迷根本不知道它從哪來、怎麼算，只能把它當成一個「別人算好的黑盒子數字」照單全收。
-
-**能不能有一個指標，既像 ERA 一樣一句話就能講清楚、一行就能算，又能真正貼近投手的實力？**
-
-這篇文章介紹 **Pitching Efficiency（PE，投球效率）**，一個為了同時滿足這三件事而設計的指標：**好懂、好算、貼近實力。**
+*By Chung-Hao Lee · A baseball analytics side-project*
+*Data: MLB Stats API, 2023–2025 (≈1,000 pitcher-seasons, IP ≥ 50) · [中文版 →](README.cn.md)*
 
 ---
 
-## 從《魔球》開始：出局，才是投手真正的稀缺資源
+In 2023, Blake Snell won the National League Cy Young Award with a glittering 2.25 ERA. He also walked more batters than anyone else in the league and needed 17.6 pitches to get through a typical inning. Three hundred miles up the coast, Logan Webb quietly threw 216 innings of strike-pounding, ground-ball baseball and finished with a 3.25 ERA — a full run higher.
 
-這個指標的靈感來自電影《魔球》。片中，數據分析師 Paul DePodesta 提醒總管 Billy Beane：棒球場上最重要的東西是**出局數**——一場比賽，每支球隊只有 **27 個出局**，在第 27 個出局到來之前得分多的一方獲勝。這正是奧克蘭運動家當年最看重上壘率（OBP）的原因：OBP 衡量的是打者「在出局之前上壘」的能力。
+By the number everyone knows, Snell was the best pitcher in the league. But was he the most *efficient*? Your gut says no. **The problem is that our simplest stat can't tell you why.**
 
-有趣的是，這股「以出局為核心」的思維，多半用在**打者**身上；輪到評價**投手**時，主流指標（ERA、FIP）卻幾乎都圍繞著「失分」打轉。
+This is the gap I wanted to close — with a number you can compute in your head.
 
-那麼，如果我們回到第一性原理，把投手的工作想成一筆交易——
+## The trade-off we keep making
 
-> **他想買的東西，是出局（outs）。**
-> **他付出的代價，是什麼？**
+Evaluating a pitcher usually means choosing between two kinds of stats.
 
-答案是**兩種成本**：
+**ERA** is universal and simple, but it has one blind spot: it only cares whether runners *scored*, not how hard you were hit. An inning where you're barreled all over the yard but escape on a double play looks identical to a 1-2-3 frame. A single and a home run are the same to ERA, as long as no one comes around. ERA sees the result, never the process.
 
-1. **球數（pitches）——力氣成本。** 每位投手每場大約只有 100 球的體力預算。用越少的球解決打者，就能投得越深、越省牛棚。這是「經濟性」。
-2. **壘打數（TB, Total Bases）——損害成本。** 每讓出一個壘包，就離失分更近一步；而且一支全壘打（4 個壘打）的損害，是一支一壘安打（1 個壘打）的四倍。這正是 ERA 分不出、我們卻最想抓住的「損害品質」。
+The **advanced stats** — wRC+, SIERA, xFIP — fix the accuracy problem, but they're black boxes to most fans. You can't derive them on a napkin, so you take them on faith.
 
-於是，投手效率的定義可以用一句話講完：
+I wanted something that is **simple enough to compute by hand, yet honest enough to reflect how a pitcher actually pitched.**
 
-> ### 投球效率 ＝ 買到的出局數 ÷ 為此付出的總代價
+## A first principle, borrowed from *Moneyball*
 
----
+The idea starts with the insight that anchored *Moneyball*: the scarcest resource in baseball is the **out**. Each team gets exactly 27 of them, and whoever scores more before the 27th wins. It's why the A's prized on-base percentage — a measure of reaching base *before* making an out.
 
-## 公式：把「力氣」和「損害」加成同一張帳單
+Curiously, that out-first lens is aimed almost entirely at hitters. When we grade pitchers, our marquee stats (ERA, FIP) all orbit around **runs**. So let's flip it. Think of a pitcher's job as a transaction:
 
-球數和壘打，本質上是**同一種東西**——都是投手為了拿下那 27 個出局所「消耗」的資源。既然是同一本帳，就該把它們**加起來**，變成一張總帳單：
+> **What he's buying: outs.**
+> **What he pays: two kinds of cost.**
 
-$$\Large PE = \frac{100 \times \text{outs}}{\text{pitches} + 4 \times \text{TB}}$$
+1. **Pitches — the cost of effort.** A pitcher has a budget of roughly 100 pitches a night. The fewer he spends per out, the deeper he goes and the more bullpen he saves.
+2. **Total bases — the cost of damage.** Every base he surrenders moves the opponent closer to scoring, and a home run (four bases) does four times the damage of a single (one base). This is exactly the distinction ERA throws away.
 
-其中 `outs` 是製造的出局數、`pitches` 是投球數、`TB` 是被打的總壘打數。這三個數字都是公開資料，**一行就能算完**。
+Two costs, one goal. Put them on the same bill, and you get the metric.
 
-而那個 `4`，可以用一句話教會任何球迷：
+## The formula
 
-> ### 「每被取得一個壘包，就像白投了 4 顆球。」
+$$\Large OPE = \frac{100 \times \text{outs}}{\text{pitches} + 4 \times \text{TB}}$$
 
-所以一支一壘安打 ≈ 浪費 4 球；一支全壘打（4 壘打）≈ 浪費 16 球，差不多是整整一位打者的用球量。**全壘打自動被懲罰得比一壘安打重四倍——這正是 ERA 做不到的事。**
+Outs, pitches thrown, total bases allowed — three numbers off any box score, one line of arithmetic. And the `4` has a one-sentence translation any fan can hold onto:
 
-**一個 30 秒的例子。** 兩位後援投手，各投 1 局、各用 15 球、各拿 3 個出局，唯一差別是被打的那一支：
+> ### Every base you give up costs you like four wasted pitches.
 
-| | 出局 | 球數 | 被打 | PE 計算 | **PE** |
-|---|:--:|:--:|:--:|---|:--:|
-| 投手 A：被打一壘安打 | 3 | 15 | 1 壘打 | 300 ÷ (15 + 4×1) | **15.8** |
-| 投手 B：被打全壘打 | 3 | 15 | 4 壘打 | 300 ÷ (15 + 4×4) | **9.7** |
+So a single is worth about four squandered pitches; a home run, sixteen — roughly a full batter's worth of work. **Home runs are punished four times as hard as singles, automatically — the thing ERA can't do.**
 
-同樣的出局、同樣的球數，只因為 B 被打的是全壘打，PE 就從「優秀」掉到「掙扎」。這種區分，是 ERA（只要沒失分就一視同仁）永遠給不了的。
+**A 30-second example.** Two relievers each throw a clean-looking inning: 3 outs, 15 pitches. The only difference is the one ball that got hit.
 
-### 為什麼權重是「4」？兩條路都指向同一個答案
+| | outs | pitches | damage | OPE |
+|---|:--:|:--:|:--:|:--:|
+| Pitcher A — gives up a single | 3 | 15 | 1 base | 300 / (15 + 4×1) = **15.8** |
+| Pitcher B — gives up a home run | 3 | 15 | 4 bases | 300 / (15 + 4×4) = **9.7** |
 
-`4` 這個數字不是隨手挑的。它同時通過了兩道關卡：
+Identical outs, identical pitch count — but B's home run drops him from "good" to "struggling." ERA, which shrugs at both as long as no run scores, would never see the difference.
 
-- **棒球直覺**：用聯盟平均定錨，一局大約丟 15–16 球、讓出約 1.4 個壘打。要讓「損害」這條腿在總帳單裡有足夠份量（而不是被龐大的球數淹沒），一個壘包大約要換算成 4 顆球。
-- **數學驗證**：下圖左側顯示，隨著權重改變，PE 與「投球局數」的相關性會跟著變。**這條線剛好在權重 ≈ 4 的地方穿過零**——也就是說，「一個壘包 ≈ 4 顆球」這個棒球直覺，同時正好是讓 PE **完全不受工作量影響**的那個值（下一節會詳談為什麼這很重要）。
+### A note on prior art
 
-而且右側顯示，權重在 **2 到 6 之間，排行榜幾乎不動**（Spearman 排名相關 ≥ 0.97）。換句話說，結論不是靠精挑權重湊出來的——PE 很穩健。
+To be clear about what's new here: the term *pitching efficiency* already exists in baseball, but it has always meant **pitch economy alone** — pitches per out, pitches per inning ([The Hardball Times has written on it](https://tht.fangraphs.com/ruminations-on-pitching-efficiency/)). Set the base-weight to zero and OPE collapses back to exactly that classic idea, outs per pitch. **The `4 × TB` term — charging a pitcher for the damage he allows — is the new part.** OPE is pitch economy *and* damage control, fused on one scale. (I've named it **Outs Per Effort** to keep it distinct from the older, economy-only sense.)
 
-![為什麼是 4](charts/2_why_w4.png)
+### Why four?
 
----
+The weight isn't arbitrary — it clears two independent bars.
 
-## 驗證一：PE 對先發和後援一視同仁
+- **The baseball argument.** A league-average inning runs about 15–16 pitches and surrenders roughly 1.4 bases. For the damage term to carry real weight in the bill (instead of drowning under the pitch count), a base has to be worth about four pitches.
+- **The math argument.** The chart below (left) tracks how OPE correlates with innings pitched as the weight changes. **That line crosses zero right around 4** — meaning "a base ≈ four pitches" is also precisely the value that makes OPE *independent of workload* (more on why that matters next).
 
-一個好的效率指標，不該因為你「投得多」或「投得少」就給你系統性的優待或懲罰。一位投 200 局的先發和一位投 60 局的後援，應該站在同一條起跑線上被比較。
+And it's robust: for any weight from 2 to 6, the leaderboard barely moves (Spearman rank agreement ≥ 0.97). The result isn't an artifact of a hand-tuned constant.
 
-因為 PE 的分子（出局）和分母（球數＋壘打）都會隨著局數等比例放大，**局數在分數中自動約分掉**。結果就是——
+![Why the weight is 4](charts/2_why_w4.png)
 
-![PE 與工作量無關](charts/1_pe_vs_ip.png)
+## Test 1 — OPE is fair to starters and relievers alike
 
-**PE 與投球局數的相關性只有 −0.02，形同零。** 那條趨勢線平得像一條水平線。橘點（後援）和藍點（先發）交織在一起，平均 PE 幾乎相同（後援 13.8、先發 13.2）。PE 衡量的是「效率」本身，而不是偷偷在衡量「你上場多久」。
+A good efficiency stat shouldn't quietly reward you for pitching *more* or *less*. A 200-inning starter and a 60-inning reliever should stand on the same line.
 
----
+Because OPE's numerator (outs) and denominator (pitches + bases) both scale with innings, workload cancels out of the ratio:
 
-## 驗證二：PE 真的抓到了投手的實力
+![OPE vs innings pitched](charts/1_ope_vs_ip.png)
 
-指標公平還不夠，關鍵是它得**準**。如果 PE 真的反映投手好壞，那麼 PE 高的投手，就該有更低的 ERA、更低的被打擊率、更少的長打。
+The correlation between OPE and innings pitched is **−0.02 — effectively zero.** Relievers (orange) and starters (blue) intermingle, and the trend line is flat. OPE measures efficiency itself, not how long you were on the mound.
 
-![PE 對 ERA 與 OPS](charts/3_pe_vs_era_ops.png)
+## Test 2 — OPE tracks how good a pitcher actually is
 
-關係非常清楚：**PE 越高，ERA 越低（r = −0.82）、被打 OPS 越低（r = −0.89）。** 把 PE 和各種公認的實力指標放在一起看，全面呈現強烈的負相關：
+Fairness is nice; accuracy is the point. If OPE means anything, high-OPE pitchers should post lower ERAs, weaker opponent hitting lines, and fewer extra-base hits.
 
-![PE 與各指標的相關性](charts/4_correlations.png)
+![OPE vs ERA and OPS-against](charts/3_ope_vs_era_ops.png)
 
-被打 OPS、WHIP、ERA、FIP、被全壘打率，PE 全都抓得又緊又準。
+They do — clearly. Higher OPE goes with lower ERA (r = −0.82) and lower opponent OPS (r = −0.89). Line OPE up against every standard measure of run prevention and the relationship is strong across the board:
 
-**但請注意最下面那條——PE 和三振率（K/9）只有微弱的 +0.18。** 這不是缺點，反而是 PE 最有意思的地方：
+![What OPE correlates with](charts/4_correlations.png)
 
-> **PE 不只是三振的代名詞。**
+Opponent OPS, WHIP, ERA, FIP, home-run rate — OPE tracks all of them tightly. But look at the bottom bar: **OPE's tie to strikeout rate (K/9) is a weak +0.18.** That's not a bug — it's the most interesting thing about the stat:
 
-它同時獎勵「用球省」和「不讓壘包」，所以那些**不靠狂飆三振、而是靠誘導軟弱擊球、快速解決打者**的投手，在 PE 眼中一樣是頂級——例如潛水艇球路的 Tyler Rogers、滾地球機器 Framber Valdez、精準壓制的 Cristopher Sánchez。這些人常被「三振至上」的視角低估，卻是 PE 榜上的常客。
+> **OPE is not just strikeouts in disguise.**
 
----
+Because it rewards *economy* and *contact management*, not just swing-and-miss, it credits the pitchers who work fast and induce weak contact — submariner Tyler Rogers, ground-ball artist Framber Valdez, pinpoint Cristopher Sánchez. The strikeout-first lens tends to underrate these arms. OPE doesn't.
 
-## PE 的刻度：這個數字要多高才算好？
+## The scale: how high is good?
 
-任何指標都需要一把可對照的尺。根據 2023–2025 全體投手的分佈：
+Every stat needs a ruler. From the full 2023–2025 distribution:
 
-![PE 分佈與分級](charts/5_distribution.png)
+![The OPE distribution and tiers](charts/5_distribution.png)
 
-| 分級 | PE | 說明 |
+| Tier | OPE | Meaning |
 |---|:--:|---|
-| 🟦 **頂尖 Elite** | ≥ 15.0 | 前 10%，賽揚等級 |
-| 🔵 **優秀 Good** | 14.2 – 15.0 | 前 25%，可靠的先發／高信任後援 |
-| ⚪ **平均 Average** | ≈ 13.4 | 聯盟中位數 |
-| 🔸 **中下** | 12.7 – 13.4 | 後段輪值／一般後援 |
-| 🔻 **掙扎** | < 12.2 | 後 10% |
+| 🟦 **Elite** | ≥ 15.0 | top 10% — Cy Young class |
+| 🔵 **Good** | 14.2 – 15.0 | top 25% — a dependable starter or high-leverage reliever |
+| ⚪ **Average** | ≈ 13.4 | the league median |
+| 🔸 **Below average** | 12.7 – 13.4 | back-of-rotation / middle relief |
+| 🔻 **Struggling** | < 12.2 | bottom 10% |
 
-記住三個錨點就夠用了：**15 是頂尖、13.4 是平均、12 以下要當心。**
+Three anchors are enough to carry in your head: **15 is elite, 13.4 is average, below 12 is trouble.**
 
----
+## The leaderboard: who does OPE love?
 
-## 排行榜：PE 選出來的都是誰？
+**Top 15 pitcher-seasons, 2023–2025 (IP ≥ 50)**
 
-**2023–2025 單季 PE 前 15 名（IP ≥ 50）**
-
-| # | 投手 | 球季 | 隊 | 角色 | IP | ERA | **PE** |
-|:--:|---|:--:|---|:--:|:--:|:--:|:--:|
-| 1 | Emmanuel Clase | 2024 | CLE | 後援 | 74.1 | 0.61 | **18.8** |
-| 2 | Raisel Iglesias | 2024 | ATL | 後援 | 69.1 | 1.95 | **17.9** |
-| 3 | Adrian Morejón | 2025 | SD | 後援 | 73.2 | 2.08 | **17.7** |
-| 4 | Tyler Rogers | 2025 | NYM | 後援 | 77.1 | 1.98 | **17.5** |
-| 5 | Aroldis Chapman | 2025 | BOS | 後援 | 61.1 | 1.17 | **17.0** |
-| 6 | Ryan Helsley | 2024 | STL | 後援 | 66.1 | 2.04 | **16.7** |
-| 7 | Brusdar Graterol | 2023 | LAD | 後援 | 67.1 | 1.20 | **16.7** |
-| 8 | Tyler Holton | 2024 | DET | 後援 | 94.1 | 2.19 | **16.6** |
+| # | Pitcher | Year | Team | Role | IP | ERA | OPE |
+|:--:|---|:--:|:--:|:--:|:--:|:--:|:--:|
+| 1 | Emmanuel Clase | 2024 | CLE | RP | 74.1 | 0.61 | **18.8** |
+| 2 | Raisel Iglesias | 2024 | ATL | RP | 69.1 | 1.95 | **17.9** |
+| 3 | Adrian Morejón | 2025 | SD | RP | 73.2 | 2.08 | **17.7** |
+| 4 | Tyler Rogers | 2025 | NYM | RP | 77.1 | 1.98 | **17.5** |
+| 5 | Aroldis Chapman | 2025 | BOS | RP | 61.1 | 1.17 | **17.0** |
+| 6 | Ryan Helsley | 2024 | STL | RP | 66.1 | 2.04 | **16.7** |
+| 7 | Brusdar Graterol | 2023 | LAD | RP | 67.1 | 1.20 | **16.7** |
+| 8 | Tyler Holton | 2024 | DET | RP | 94.1 | 2.19 | **16.6** |
 | … | | | | | | | |
-| 13 | **Trevor Rogers** | 2025 | BAL | **先發** | 109.2 | 1.81 | **16.2** |
+| 13 | **Trevor Rogers** | 2025 | BAL | **SP** | 109.2 | 1.81 | **16.2** |
 
-榜首清一色是各隊的王牌後援與守護神——面孔完全符合直覺。而全體投手中排名最高的**先發**是 2025 年浴火重生的 Trevor Rogers。若只看先發：
+The top of the board is elite relievers and closers — exactly the faces you'd expect. The highest-ranked **starter** is 2025's breakout Trevor Rogers. Among starters only:
 
-**2023–2025 先發投手 PE 前 6 名**
+**Top starters by OPE, 2023–2025**
 
-| # | 投手 | 球季 | 隊 | IP | ERA | **PE** |
-|:--:|---|:--:|---|:--:|:--:|:--:|
+| # | Pitcher | Year | Team | IP | ERA | OPE |
+|:--:|---|:--:|:--:|:--:|:--:|:--:|
 | 1 | Trevor Rogers | 2025 | BAL | 109.2 | 1.81 | **16.2** |
 | 2 | Cristopher Sánchez | 2025 | PHI | 202.0 | 2.50 | **15.7** |
 | 3 | Nathan Eovaldi | 2025 | TEX | 130.0 | 1.73 | **15.7** |
@@ -156,50 +141,95 @@ $$\Large PE = \frac{100 \times \text{outs}}{\text{pitches} + 4 \times \text{TB}}
 | 5 | **Tarik Skubal** | 2025 | DET | 195.1 | 2.21 | **15.6** |
 | 6 | Framber Valdez | 2024 | HOU | 176.1 | 2.91 | **15.5** |
 
-**Tarik Skubal**——2024、2025 連兩年賽揚獎得主——在三個球季裡三度擠進先發前段，是 PE 眼中最穩定的頂級先發，這也再次印證了指標的說服力。
+Back-to-back Cy Young winner **Tarik Skubal** lands in the top of the starter board in all three seasons — a reassuring sign the stat is pointing at the right people.
 
-### PE 看得到、ERA 看不到的東西
+### What OPE sees that ERA doesn't
 
-看看這兩位先發：
+Consider two starters:
 
-| 投手 | 球季 | ERA | **PE** | 分級 |
+| Pitcher | Year | ERA | OPE | Tier |
 |---|:--:|:--:|:--:|---|
-| Tyler Glasnow | 2024 | 3.49 | **15.0** | 頂尖 |
-| Charlie Morton | 2023 | 3.64 | **13.1** | 中下 |
+| Tyler Glasnow | 2024 | 3.49 | **15.0** | Elite |
+| Charlie Morton | 2023 | 3.64 | **13.1** | Below average |
 
-**在 ERA 眼裡，他們幾乎是雙胞胎**（3.49 對 3.64）。但 PE 在兩人之間拉開了整整一個級距。原因藏在過程裡：Glasnow 用壓倒性的球威快速解決打者、極少讓出壘包；Morton 則投得更辛苦、被取得的壘包更多。**ERA 只看到最後的失分結果相近；PE 卻讀出了兩人「賺取出局」的效率天差地別。** 這，就是 PE 補上的那個維度。
+**To ERA, they're near-twins.** OPE puts a full tier between them. The difference is in the process: Glasnow overpowered hitters and gave up almost nothing; Morton grinded, allowing far more baserunners for the same bottom-line ERA. ERA saw two similar results. OPE saw two very different pitchers — which is the whole point.
+
+## Which staffs are the most efficient?
+
+Zoom out from individuals to whole pitching staffs and OPE passes the smell test again:
+
+![Team average OPE](charts/6_team_ope.png)
+
+The Mariners, Rays, Brewers, Padres and Phillies sit on top — the very organizations known for developing and deploying pitching. At the bottom: the Rockies (hello, Coors Field), White Sox and Nationals. Nothing here will surprise you, which is exactly the point — a new stat should agree with what we already know before it tells us something we don't.
+
+## OPE vs the voters: the Cy Young test
+
+So how does OPE line up with the sport's official verdict on its best pitchers? I pulled every Cy Young winner from 2023–2025 and found where they ranked in their own league's OPE.
+
+![Cy Young winners vs their league's OPE leader](charts/7_cy_young.png)
+
+For the **efficiency-driven** winners, OPE and the writers are in lockstep: Skubal ranks near the top of the AL starter board both years; Gerrit Cole was right there in 2023. These were dominant, economical seasons, and OPE says so.
+
+Then there's **Blake Snell, 2023** — the pitcher we opened with, and the biggest split on the board. OPE ranked him just 14th among NL starters. Here's why, side by side with the man OPE crowned instead:
+
+| 2023 NL | IP | ERA | FIP | Walks | Pitches/inning | OPE |
+|---|:--:|:--:|:--:|:--:|:--:|:--:|
+| Blake Snell (Cy Young) | 180.0 | 2.25 | 3.38 | **99** | **17.6** | 13.86 |
+| Logan Webb (OPE's pick) | 216.0 | 3.25 | 3.10 | **31** | **14.7** | 14.75 |
+
+They threw almost the same number of pitches. Webb turned his into 36 more innings, with a third the walks and a better FIP. Snell's ERA was lower — he was brilliant at stranding the traffic he created — but by every measure of *process*, Webb was the more efficient pitcher, and even FIP agrees with OPE over ERA here. **This is the single clearest illustration of what OPE adds: it grades the pitching, not just the scoreboard.**
+
+## Greatness is consistency: the legends
+
+A one-season snapshot is one thing. What separates the inner circle is doing it *every year*. So I traced OPE across five Hall-of-Fame careers.
+
+![OPE across Hall-of-Fame careers](charts/8_legends.png)
+
+| Pitcher | Career OPE | Span |
+|---|:--:|:--:|
+| Greg Maddux | **15.5 ± 0.7** | 1988–2008 |
+| Mariano Rivera | 15.5 ± 1.4 | 1995–2013 |
+| Clayton Kershaw | 15.1 ± 1.1 | 2008–2025 |
+| Pedro Martínez | 14.8 ± 1.2 | 1993–2009 |
+| Justin Verlander | 13.8 ± 0.9 | 2006–2025 |
+
+Recall that the league average is 13.4 and that OPE, like most rate stats, is only modestly self-correlated year to year for the general population. Yet these arms parked in the "Good-to-Elite" band for **fifteen to twenty seasons straight.** Greg Maddux — fittingly, the patron saint of pitch efficiency — averaged 15.5 across *21 years* with a standard deviation of just 0.7. Sustained, high OPE turns out to be a fingerprint of greatness.
+
+## The 2026 watch
+
+With the 2026 season about 55% complete, here's the starter leaderboard so far:
+
+![2026 OPE leaderboard](charts/9_ope_2026.png)
+
+OPE's most efficient starter to date is Brewers rookie phenom **Jacob Misiorowski** (16.5, 1.62 ERA). Notably, the two-time defending Cy Young winner Skubal has slipped to 25th in OPE this year (3.06 ERA) — a real, measurable step back from his back-to-back peak.
+
+**One honest caveat:** OPE is a *descriptive* stat, not a crystal ball. Year-to-year it's about as stable as ERA (both hover near 0.2), so read this board as "who has pitched most efficiently so far," not a locked-in prediction. If you want to forecast, pair OPE with FIP and xFIP.
+
+## What OPE is — and isn't
+
+- **It describes; it doesn't predict.** OPE captures how efficient a pitcher *was* this season. Use it to evaluate, not to project next year on its own.
+- **The weight of 4 is a modeling choice** — well-grounded, and robust across a wide range, but a choice.
+- **No park or opponent adjustment.** OPE is raw efficiency; it isn't scaled for Coors Field or league run environment the way ERA- and FIP- are.
+- **Small samples stay noisy.** Everything here uses IP ≥ 50; below that, OPE (like any rate stat) swings wildly.
+
+## The bottom line
+
+Outs Per Effort answers the most basic question in pitching with one plain division: **how many outs did this pitcher buy, and how much did he pay?**
+
+- **Simple** — outs ÷ (pitches + four per base), computable in your head.
+- **Transparent** — three box-score numbers, no black box.
+- **Descriptive** — it moves with ERA, OPS, and WHIP; it charges four times as much for a homer as a single; it judges starters and relievers alike; and it catches the efficient arms a strikeout-first view walks right past.
+
+It won't replace wRC+ or SIERA, and it isn't trying to. But if you want a number you can work out on a napkin that still tells you something true about how a pitcher pitched — OPE is that number.
 
 ---
 
-## 球隊視角：哪些球團最會「有效率地」解決打者？
+### Methodology & reproducibility
 
-![各隊平均 PE](charts/6_team_pe.png)
+Everything here is reproducible from this repo:
 
-水手、光芒、釀酒人、教士、費城人領先群雄——這些正是近年以投手調度與培養聞名的球隊。而墊底的洛磯（主場 Coors Field 的高海拔惡夢）、白襪、國民，同樣毫不意外。PE 在球隊層級一樣通過了「符合常識」的檢驗。
+- **Data** — [`data/`](data/): raw pitching lines pulled from the public MLB Stats API (`statsapi.mlb.com`), regular season, 2023–2025 plus 2026-to-date, and career lines for the legends.
+- **Fetch it yourself** — [`scripts/fetch_pe_data.py`](scripts/fetch_pe_data.py) (`python3 fetch_pe_data.py 2026`) and [`scripts/fetch_legends.py`](scripts/fetch_legends.py). Standard library only, no dependencies.
+- **Recompute & re-plot** — [`scripts/analyze_pe.py`](scripts/analyze_pe.py) and [`scripts/make_charts.py`](scripts/make_charts.py) (pandas + matplotlib).
 
----
-
-## 誠實的限制：PE 是什麼、不是什麼
-
-一個負責任的指標，要講清楚自己的邊界：
-
-- **PE 是「描述」，不是「預測」。** 它精準描述一位投手**這個球季有多有效率**，但年度之間的穩定度大約和 ERA 相當（相關係數都在 0.2 上下）——所以它適合用來**回顧與評價**，不適合單獨拿來預測明年。想預測未來表現，仍該搭配 FIP、xFIP 這類指標。
-- **權重 4 是一個「選擇」。** 它有紮實的棒球與數學依據，但終究是一個建模決定。好消息是，前面證明了在合理範圍（2–6）內排名幾乎不變。
-- **PE 不做場地與對手校正。** 它是「原始效率」，不像 ERA-、FIP- 那樣針對球場、聯盟做過調整。Coors Field 的投手在 PE 上會吃虧，這是需要放在心裡的背景。
-- **樣本仍需門檻。** 本文採 IP ≥ 50。局數太少的投手，任何比率型指標（包括 PE）都會劇烈震盪。
-
----
-
-## 結論
-
-Pitching Efficiency 用一道最樸素的除法，回答了一個最根本的問題：**這位投手，用多少代價，換到了多少出局？**
-
-- **好懂**：出局 ÷（球數 ＋ 每個壘包算 4 球），一句話講完。
-- **好算**：三個公開數字，一行公式，不需要黑盒子。
-- **貼近實力**：與 ERA、OPS、WHIP 高度吻合，全壘打自動比一壘安打重四倍，對先發後援一視同仁，還抓得到那些被「三振至上」低估的效率型投手。
-
-它不會、也不打算取代 wRC+ 或 FIP 那樣的精密工具。但如果你想要一個**能在腦中口算、又真的說得出投手好壞**的數字——PE 或許就是那個「兩全其美」的答案。
-
----
-
-*資料來源：MLB Stats API（`statsapi.mlb.com`），2023–2025 三個例行賽季，篩選投球局數 ≥ 50，共約 1,000 個投手球季。FIP 以各季聯盟常數校正，使聯盟 FIP 等於聯盟 ERA。分析與圖表以 Python（pandas / matplotlib）產生。*
+Sample: pitcher-seasons with IP ≥ 50 (≈1,000 across 2023–2025). `outs` and `TB` are taken directly from the API; FIP uses a per-season constant so that league FIP equals league ERA. The original 2022 prototype of this idea is preserved in [`archive/`](archive/).
