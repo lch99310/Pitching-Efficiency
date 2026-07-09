@@ -41,20 +41,25 @@ Two costs, one goal. Put them on the same bill, and you get the metric.
 
 $$\Large OPE = \frac{100 \times \text{outs}}{\text{pitches} + 4 \times \text{TB}}$$
 
-Outs, pitches thrown, total bases allowed — three numbers off any box score, one line of arithmetic. And the `4` has a one-sentence translation any fan can hold onto:
+Outs, pitches thrown, total bases allowed — three numbers off any box score, one line of arithmetic. The best way to read it is backwards: the denominator is the **total cost** a pitcher pays — every pitch he throws, plus a penalty for every base he gives up — and OPE asks how many outs he squeezed out of that cost. It is, quite literally, an **efficiency**: outs produced per unit of effort spent, scaled so that *higher is better*. (That `100` is just there to land the numbers in a friendly range.)
+
+The `4` has a one-sentence translation any fan can hold onto:
 
 > ### Every base you give up costs you like four wasted pitches.
 
 So a single is worth about four squandered pitches; a home run, sixteen — roughly a full batter's worth of work. **Home runs are punished four times as hard as singles, automatically — the thing ERA can't do.**
 
-**A 30-second example.** Two relievers each throw a *scoreless* inning: 3 outs, 15 pitches, one hit that's erased before it can score. Same line, same 0.00 ERA. The only difference is what that one hit was.
+### See it in one inning
 
-| | outs | pitches | hit allowed | runs | OPE |
-|---|:--:|:--:|:--:|:--:|:--:|
-| Pitcher A — a single (stranded) | 3 | 15 | 1 base | 0 | 300 / (15 + 4×1) = **15.8** |
-| Pitcher B — a double (stranded) | 3 | 15 | 2 bases | 0 | 300 / (15 + 4×2) = **13.0** |
+Picture three relievers who each throw a *scoreless* inning — 3 outs, nobody scores, an identical 0.00 ERA. To ERA they are triplets. Watch OPE pull them apart:
 
-Identical outs, identical pitch count, identical ERA — yet OPE still knows B gave up more, sliding him from the "good" tier to below average. That's the whole idea in miniature: **OPE charges for damage the moment it happens, whether or not it ever scores.** (Over a full season those small differences compound, and a home run — four bases — is punished four times as hard as a single.)
+![Three scoreless innings, three different OPEs](charts/01_example.png)
+
+- **Pitcher A** needs 15 pitches and gives up a harmless single → OPE **15.8**. Our baseline.
+- **Pitcher B** does the same job on *12 pitches* → OPE **18.8**. He was more **economical**, so he rates higher.
+- **Pitcher C** also uses 15 pitches, but the hit he allows is a *double* → OPE **13.0**. Same effort, more **damage**, so he rates lower.
+
+That's the whole metric in one picture: reward the pitcher who spends fewer pitches, penalize the one who concedes more bases — even when the scoreboard, and ERA, can't tell any of them apart.
 
 ### Why four?
 
@@ -65,7 +70,7 @@ The weight isn't arbitrary — it clears two independent bars.
 
 And it's robust: for any weight from 2 to 6, the leaderboard barely moves (Spearman rank agreement ≥ 0.97). The result isn't an artifact of a hand-tuned constant.
 
-![Why the weight is 4](charts/2_why_w4.png)
+![Why the weight is 4](charts/02_why_w4.png)
 
 ## Test 1 — OPE is fair to starters and relievers alike
 
@@ -73,7 +78,7 @@ A good efficiency stat shouldn't quietly reward you for pitching *more* or *less
 
 Because OPE's numerator (outs) and denominator (pitches + bases) both scale with innings, workload cancels out of the ratio:
 
-![OPE vs innings pitched](charts/1_ope_vs_ip.png)
+![OPE vs innings pitched](charts/03_ope_vs_ip.png)
 
 The correlation between OPE and innings pitched is **−0.02 — effectively zero.** Relievers (orange) and starters (blue) intermingle, and the trend line is flat. OPE measures efficiency itself, not how long you were on the mound.
 
@@ -81,23 +86,31 @@ The correlation between OPE and innings pitched is **−0.02 — effectively zer
 
 Fairness is nice; accuracy is the point. If OPE means anything, better OPE should translate into better results — lower ERAs, weaker opponent hitting lines. So let's sort every pitcher-season into OPE tiers and look at what each tier actually produced:
 
-![Results by OPE tier](charts/3_ope_vs_results.png)
+![Results by OPE tier](charts/04_ope_vs_results.png)
 
 The staircase is perfect: each step up in OPE drops the average ERA, from a brutal 5.80 in the bottom tier to a sparkling 2.44 at the top, with opponent OPS falling in lockstep. Put another way, OPE correlates with ERA at −0.82 and with opponent OPS at −0.89. And it isn't just those two — line OPE up against every standard measure of run prevention and the relationship holds across the board:
 
-![What OPE correlates with](charts/4_correlations.png)
+![What OPE correlates with](charts/05_correlations.png)
 
-Opponent OPS, WHIP, ERA, FIP, home-run rate — OPE tracks all of them tightly. But look at the bottom bar: **OPE's tie to strikeout rate (K/9) is a weak +0.18.** That's not a bug — it's the most interesting thing about the stat:
+Opponent OPS, WHIP, ERA, FIP, home-run rate — OPE tracks all of them tightly. But look at the bottom bar: **OPE's tie to strikeout rate (K/9) is a weak +0.18.** That's not a bug — it's the most interesting thing about the stat.
 
-> **OPE is not just strikeouts in disguise.**
+## The pitchers OPE finally lets us appreciate
 
-Because it rewards *economy* and *contact management*, not just swing-and-miss, it credits the pitchers who work fast and induce weak contact. Submariner **Tyler Rogers** struck out just 5.6 per nine in 2025 — bottom-of-the-league bat-missing — yet posted a **17.5 OPE**, one of the best marks of any pitcher, because he needed only 12.7 pitches an inning and gave up almost nothing. Ground-ball artist **Framber Valdez** (15.5) and pinpoint **Cristopher Sánchez** (15.7) tell the same story. The strikeout-first lens underrates these arms; OPE doesn't — a tradition that runs from Jamie Moyer and Mark Buehrle to Dan Haren, finesse pitchers who spent careers proving you don't need velocity to be efficient.
+Most of our best pitching stats lean, directly or indirectly, on missing bats. That leaves a whole tradition of pitcher underserved: the soft-tossers who rarely strike anyone out, but let hitters make contact *badly* — weak grounders and lazy flies that turn into outs. We always sort of knew these guys were useful. We never had a clean number for it.
+
+OPE does. Because it rewards economy and contact management rather than swing-and-miss, it puts real value on exactly what these pitchers do. Take submariner **Tyler Rogers**: in 2025 he struck out just 5.6 per nine — bottom-of-the-league bat-missing — yet posted a **17.5 OPE**, one of the best marks in baseball, because he needed only 12.7 pitches an inning and gave up next to nothing.
+
+Zoom out over full careers (era-adjusted to **OPE+**, where 100 is the league average — more on that later), and the pattern is striking:
+
+![Finesse vs power: both reach high OPE+](charts/10_finesse.png)
+
+Jamie Moyer and Mark Buehrle each struck out barely five per nine — half the rate of a modern power arm — and still finished *above* the league line for two decades apiece (OPE+ 102 and 104). And there in the same low-strikeout neighborhood sits **Greg Maddux** (OPE+ 115), the greatest command artist of them all, level with the flame-throwing Pedro Martínez (112). **There are two roads to efficiency — overpower the hitter, or never let him square it up — and OPE is one of the few stats that honors both.**
 
 ## The scale: how high is good?
 
 Every stat needs a ruler. From the full 2023–2025 distribution:
 
-![The OPE distribution and tiers](charts/5_distribution.png)
+![The OPE distribution and tiers](charts/06_distribution.png)
 
 | Tier | OPE | Meaning |
 |---|:--:|---|
@@ -107,7 +120,13 @@ Every stat needs a ruler. From the full 2023–2025 distribution:
 | 🔸 **Below average** | 12.7 – 13.4 | back-of-rotation / middle relief |
 | 🔻 **Struggling** | < 12.2 | bottom 10% |
 
-Three anchors are enough to carry in your head: **15 is elite, 13.4 is average, below 12 is trouble.** (Is this ruler stable? The league-average OPE across 2023, 2024 and 2025 was 13.05, 13.32 and 13.26 — steady to within a quarter-point, so pooling three recent seasons into one scale is safe. Across *decades* the baseline drifts more, which is exactly why the career comparison later switches to an era-adjusted version.)
+Three anchors are enough to carry in your head: **15 is elite, 13.4 is average, below 12 is trouble.**
+
+Is this ruler stable? Across 2023, 2024 and 2025 the league-average OPE was 13.05, 13.32 and 13.26 — steady to within a quarter-point, so pooling three recent seasons into one scale is safe. But zoom all the way out and the baseline does move:
+
+![League-average OPE over time](charts/07_league_trend.png)
+
+League-average OPE tracks the run-scoring environment in reverse: it bottomed out around the steroid-era offensive peak of 2000, dipped again during the juiced-ball home-run surge of 2019, and rises whenever offense cools. Over 35 years it has swung from about 12.7 to 14.6 — a real gap, and the reason the career comparisons later switch to an era-adjusted version.
 
 ## The leaderboard: who does OPE love?
 
@@ -139,9 +158,9 @@ The top of the board is elite relievers and closers — exactly the faces you'd 
 | 5 | **Tarik Skubal** | 2025 | DET | 195.1 | 2.21 | **15.6** |
 | 6 | Framber Valdez | 2024 | HOU | 176.1 | 2.91 | **15.5** |
 
-Back-to-back Cy Young winner **Tarik Skubal** lands in the top of the starter board in all three seasons — a reassuring sign the stat is pointing at the right people. And it isn't only individuals: zoom out to whole staffs and the Mariners, Rays, Brewers, Padres and Phillies rise to the top — the very organizations known for developing pitching — while the Rockies (hello, Coors Field), White Sox and Nationals sit at the bottom. Nothing there will surprise you, which is the point: a new stat should agree with what we already know before it tells us something we don't.
+Back-to-back Cy Young winner **Tarik Skubal** lands in the top of the starter board all three seasons — a reassuring sign the stat points at the right people. And it isn't only individuals: zoom out to whole staffs and the Mariners, Rays, Brewers, Padres and Phillies rise to the top — the very organizations known for developing pitching — while the Rockies (hello, Coors Field), White Sox and Nationals sit at the bottom. Nothing there will surprise you, which is the point: a new stat should agree with what we already know before it tells us something we don't.
 
-![Team average OPE](charts/6_team_ope.png)
+![Team average OPE](charts/08_team_ope.png)
 
 ### What OPE sees that ERA doesn't
 
@@ -156,26 +175,26 @@ Consider two starters:
 
 ## Test 3 — seeing what ERA can't: OPE vs the voters
 
-If OPE really captures something ERA misses, it should occasionally *disagree* with the sport's official verdict — and have a point when it does. So I pulled every Cy Young winner from 2023–2025 and found where they ranked in their own league's OPE.
+If OPE really captures something ERA misses, it should occasionally *disagree* with the sport's official verdict — and have a point when it does. So I pulled every Cy Young winner from 2023–2025 and found where they ranked in their own league's OPE:
 
-![Cy Young winners vs their league's OPE leader](charts/7_cy_young.png)
+![Where each Cy Young winner ranked by OPE](charts/09_cy_young.png)
 
-For the **efficiency-driven** winners, OPE and the writers are in lockstep: Skubal ranks near the top of the AL starter board both years; Gerrit Cole was right there in 2023. These were dominant, economical seasons, and OPE says so.
+For the efficiency-driven winners, OPE and the writers are in lockstep: Skubal, Cole and Skenes all sit in the 94th percentile or better among their league's starters. These were dominant, economical seasons, and OPE says so.
 
-Then there's **Blake Snell, 2023** — the pitcher we opened with, and the biggest split on the board. OPE ranked him just 14th among NL starters. Here's why, side by side with the man OPE crowned instead:
+Then there's **Blake Snell, 2023** — the pitcher we opened with, and the one glaring outlier at the 71st percentile. Here's why, side by side with the man OPE would have crowned instead:
 
 | 2023 NL | IP | ERA | FIP | Walks | Pitches/inning | OPE |
 |---|:--:|:--:|:--:|:--:|:--:|:--:|
 | Blake Snell (Cy Young) | 180.0 | 2.25 | 3.38 | **99** | **17.6** | 13.86 |
 | Logan Webb (OPE's pick) | 216.0 | 3.25 | 3.10 | **31** | **14.7** | 14.75 |
 
-They threw almost the same number of pitches. Webb turned his into 36 more innings, with a third the walks and a better FIP. Snell's ERA was lower — he was brilliant at stranding the traffic he created — but by every measure of *process*, Webb was the more efficient pitcher, and even FIP agrees with OPE over ERA here. **This is the single clearest illustration of what OPE adds: it grades the pitching, not just the scoreboard.**
+They threw almost the same number of pitches. Webb turned his into 36 more innings, with a third the walks and a better FIP. Snell's ERA was lower — he was brilliant at stranding the traffic he created — but by every measure of *process*, Webb was the more efficient pitcher, and even FIP agrees with OPE over ERA here. **This is the clearest illustration of what OPE adds: it grades the pitching, not just the scoreboard.**
 
 ## Test 4 — greatness is consistency
 
-A one-season snapshot is one thing; the inner circle does it *every year*. But there's a trap here: the run-scoring environment shifts across eras, so raw OPE isn't comparable between the 1990s and today (league-average OPE has ranged from about 12.7 to 14.6 over the past 35 years). To trace careers honestly, we index each season to its own league: **OPE+**, where 100 is that year's league average and 115 means "15% better than the field."
+A one-season snapshot is one thing; the inner circle does it *every year*. But as we just saw, the run-scoring environment shifts across eras, so raw OPE isn't comparable between the 1990s and today. To trace careers honestly, we index each season to its own league: **OPE+**, where 100 is that year's league average and 115 means "15% better than the field."
 
-![Era-adjusted OPE across Hall-of-Fame careers](charts/8_legends.png)
+![Era-adjusted OPE across Hall-of-Fame careers](charts/11_legends.png)
 
 | Pitcher | Career OPE+ | Span |
 |---|:--:|:--:|
@@ -191,9 +210,9 @@ Every one of these arms lived *above* the league line for **fifteen to twenty se
 
 With the 2026 season about 55% complete, here's the starter leaderboard so far:
 
-![2026 OPE leaderboard](charts/9_ope_2026.png)
+![2026 OPE leaderboard](charts/12_ope_2026.png)
 
-OPE's most efficient starter to date is Brewers rookie phenom **Jacob Misiorowski** (16.5, 1.62 ERA). Notably, the two-time defending Cy Young winner Skubal has slipped to 25th in OPE this year (3.06 ERA) — a real, measurable step back from his back-to-back peak.
+OPE's most efficient starter to date is Brewers rookie phenom **Jacob Misiorowski** (16.5, 1.62 ERA). Notably, two-time defending Cy Young winner Skubal has slipped to 25th in OPE this year (3.06 ERA) — a real, measurable step back from his back-to-back peak.
 
 **One honest caveat:** OPE is a *descriptive* stat, not a crystal ball. Year-to-year it's about as stable as ERA (both hover near 0.2), so read this board as "who has pitched most efficiently so far," not a locked-in prediction. If you want to forecast, pair OPE with FIP and xFIP.
 
@@ -201,7 +220,7 @@ OPE's most efficient starter to date is Brewers rookie phenom **Jacob Misiorowsk
 
 - **It describes; it doesn't predict.** OPE captures how efficient a pitcher *was* this season. Use it to evaluate, not to project next year on its own.
 - **The weight of 4 is a modeling choice** — well-grounded, and robust across a wide range, but a choice.
-- **No park or opponent adjustment.** OPE is raw efficiency; it isn't scaled for Coors Field or league run environment the way ERA- and FIP- are.
+- **Raw OPE has no park or opponent adjustment** (for cross-era comparisons we use OPE+ above). It isn't scaled for Coors Field or league run environment the way ERA- and FIP- are.
 - **Small samples stay noisy.** Everything here uses IP ≥ 50; below that, OPE (like any rate stat) swings wildly.
 
 ## The bottom line
@@ -210,7 +229,7 @@ Outs Per Effort answers the most basic question in pitching with one plain divis
 
 - **Simple** — outs ÷ (pitches + four per base), computable in your head.
 - **Transparent** — three box-score numbers, no black box.
-- **Descriptive** — it moves with ERA, OPS, and WHIP; it charges four times as much for a homer as a single; it judges starters and relievers alike; and it catches the efficient arms a strikeout-first view walks right past.
+- **Descriptive** — it moves with ERA, OPS, and WHIP; it charges four times as much for a homer as a single; it judges starters and relievers alike; and it finally puts a number on the finesse artists a strikeout-first view walks right past.
 
 It won't replace wRC+ or SIERA, and it isn't trying to. But if you want a number you can work out on a napkin that still tells you something true about how a pitcher pitched — OPE is that number.
 
@@ -220,7 +239,7 @@ It won't replace wRC+ or SIERA, and it isn't trying to. But if you want a number
 
 Everything here is reproducible from this repo:
 
-- **Data** — [`data/`](data/): raw pitching lines from the public MLB Stats API (`statsapi.mlb.com`) — regular season 2023–2025 plus 2026-to-date, Hall-of-Fame career lines, and per-season league totals used for the OPE+ baseline.
+- **Data** — [`data/`](data/): raw pitching lines from the public MLB Stats API (`statsapi.mlb.com`) — regular season 2023–2025 plus 2026-to-date, Hall-of-Fame and finesse career lines, and per-season league totals used for the OPE+ baseline.
 - **Fetch it yourself** — [`scripts/fetch_pe_data.py`](scripts/fetch_pe_data.py) (`python3 fetch_pe_data.py 2026`), [`scripts/fetch_legends.py`](scripts/fetch_legends.py), and [`scripts/fetch_history.py`](scripts/fetch_history.py). Standard library only, no dependencies.
 - **Recompute & re-plot** — [`scripts/analyze_pe.py`](scripts/analyze_pe.py) and [`scripts/make_charts.py`](scripts/make_charts.py) (pandas + matplotlib).
 

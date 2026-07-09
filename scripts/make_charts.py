@@ -8,6 +8,7 @@ import numpy as np
 import pandas as pd
 import matplotlib as mpl
 import matplotlib.pyplot as plt
+from matplotlib.lines import Line2D
 
 from analyze_pe import load_main, DATA, W
 
@@ -39,24 +40,53 @@ def trend(ax, x, y, color):
 
 df = load_main()
 sp, rp = df[df.role == "SP"], df[df.role == "RP"]
+base = pd.read_csv(os.path.join(DATA, "pe_league_baseline.csv"))
+base["lgOPE"] = 100*base["lg_outs"]/(base["lg_pitches"]+W*base["lg_totalBases"])
+lgmap = dict(zip(base.season, base.lgOPE))
 
-# ===== 1. OPE vs IP =====
-fig, ax = plt.subplots(figsize=(8.6, 5.6))
-ax.scatter(rp.IP, rp.OPE, s=26, color=ORANGE, alpha=.55, edgecolor="none", label="Reliever")
-ax.scatter(sp.IP, sp.OPE, s=26, color=BLUE, alpha=.55, edgecolor="none", label="Starter")
-b, a = np.polyfit(df.IP, df.OPE, 1); xs = np.linspace(df.IP.min(), df.IP.max(), 50)
-ax.plot(xs, a + b*xs, color=INK, lw=2.5, zorder=5)
-ax.text(0.97, 0.06, f"r = {df.OPE.corr(df.IP):+.02f}", transform=ax.transAxes, ha="right",
-        fontsize=15, fontweight="bold", bbox=dict(boxstyle="round,pad=0.4", fc="white", ec=GRID))
-ax.set_xlabel("Innings Pitched (workload)"); ax.set_ylabel("Outs Per Effort (OPE)")
-ax.set_title("OPE is blind to workload — starters and relievers judged alike")
-ax.legend(frameon=False, loc="upper left")
-style(ax); fig.tight_layout(); fig.savefig(f"{OUT}/1_ope_vs_ip.png"); plt.close()
+def career_table(path, names):
+    """IP-weighted career OPE, OPE+, K/9 for a set of pitchers in a legends-style file."""
+    d = pd.read_csv(path)
+    d["IP"] = pd.to_numeric(d["inningsPitched"], errors="coerce")
+    d["numberOfPitches"] = pd.to_numeric(d["numberOfPitches"], errors="coerce")
+    def dd(g):
+        if g["team"].isna().any(): return g[g["team"].isna()].iloc[0]
+        return g.sort_values("IP", ascending=False).iloc[0]
+    d = pd.DataFrame([dd(g) for _, g in d.groupby(["player_name", "season"])])
+    d = d[(d.IP >= 40) & (d.numberOfPitches/d.IP >= 13)].copy()
+    d["OPE"] = 100*d["outs"]/(d["numberOfPitches"]+W*d["totalBases"])
+    d["OPEplus"] = 100*d["OPE"]/d["season"].map(lgmap)
+    out = {}
+    for pl in names:
+        s = d[d.player_name == pl]
+        if not len(s): continue
+        wt = s.IP/s.IP.sum()
+        out[pl] = dict(K9=s.strikeOuts.sum()*9/s.IP.sum(),
+                       OPE=(s.OPE*wt).sum(), OPEplus=(s.OPEplus*wt).sum(),
+                       yr0=int(s.season.min()), yr1=int(s.season.max()), df=s)
+    return out
 
-# ===== 2. why w=4 =====
-ws = np.arange(0, 12.05, 0.25); base = 100*df.outs/(df.numberOfPitches+4*df.totalBases)
+# ===== 01 intro example =====
+scen = [("A · baseline\n15 pitches, a single", 300/(15+4*1), BLUE),
+        ("B · more economical\n12 pitches, a single", 300/(12+4*1), AQUA),
+        ("C · more damage\n15 pitches, a double", 300/(15+4*2), ORANGE)]
+fig, ax = plt.subplots(figsize=(9.2, 5.2))
+x = np.arange(3)
+ax.bar(x, [s[1] for s in scen], color=[s[2] for s in scen], width=0.6, zorder=3)
+for xi, s in zip(x, scen):
+    ax.text(xi, s[1]+0.25, f"{s[1]:.1f}", ha="center", fontweight="bold", fontsize=14)
+ax.set_xticks(x); ax.set_xticklabels([s[0] for s in scen], fontsize=10.5)
+ax.set_ylabel("Outs Per Effort (OPE)"); ax.set_ylim(0, 23)
+ax.set_title("Same scoreless inning, same 0.00 ERA — three different OPEs")
+ax.text(0.5, 0.96, "3 outs each · nobody scores · ERA can't tell them apart",
+        transform=ax.transAxes, ha="center", color=INK2, fontsize=10.5)
+style(ax); ax.grid(axis="x", visible=False)
+fig.tight_layout(); fig.savefig(f"{OUT}/01_example.png"); plt.close()
+
+# ===== 02 why w=4 =====
+ws = np.arange(0, 12.05, 0.25); baseOPE = 100*df.outs/(df.numberOfPitches+4*df.totalBases)
 corr_ip = [(100*df.outs/(df.numberOfPitches+w*df.totalBases)).corr(df.IP) for w in ws]
-spear = [(100*df.outs/(df.numberOfPitches+w*df.totalBases)).corr(base, method="spearman") for w in ws]
+spear = [(100*df.outs/(df.numberOfPitches+w*df.totalBases)).corr(baseOPE, method="spearman") for w in ws]
 fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(12.5, 5.2))
 ax1.axhline(0, color=INK2, lw=1, ls=(0, (4, 3)))
 ax1.plot(ws, corr_ip, color=BLUE, lw=2.8); ax1.axvline(4, color=RED, lw=2, ls=(0, (3, 2)))
@@ -70,29 +100,41 @@ ax2.plot(ws, spear, color=AQUA, lw=2.8); ax2.axvspan(2, 6, color=AQUA, alpha=.10
 ax2.axvline(4, color=RED, lw=2, ls=(0, (3, 2))); ax2.set_ylim(0.6, 1.01)
 ax2.set_xlabel("weight w"); ax2.set_ylabel("rank agreement with w=4 (Spearman)")
 ax2.set_title("Rankings barely move for w = 2–6 (robust)"); style(ax2)
-fig.tight_layout(); fig.savefig(f"{OUT}/2_why_w4.png"); plt.close()
+fig.tight_layout(); fig.savefig(f"{OUT}/02_why_w4.png"); plt.close()
 
-# ===== 3. results by OPE tier (staircase) =====
+# ===== 03 OPE vs IP =====
+fig, ax = plt.subplots(figsize=(8.6, 5.6))
+ax.scatter(rp.IP, rp.OPE, s=26, color=ORANGE, alpha=.55, edgecolor="none", label="Reliever")
+ax.scatter(sp.IP, sp.OPE, s=26, color=BLUE, alpha=.55, edgecolor="none", label="Starter")
+b, a = np.polyfit(df.IP, df.OPE, 1); xs = np.linspace(df.IP.min(), df.IP.max(), 50)
+ax.plot(xs, a + b*xs, color=INK, lw=2.5, zorder=5)
+ax.text(0.97, 0.06, f"r = {df.OPE.corr(df.IP):+.02f}", transform=ax.transAxes, ha="right",
+        fontsize=15, fontweight="bold", bbox=dict(boxstyle="round,pad=0.4", fc="white", ec=GRID))
+ax.set_xlabel("Innings Pitched (workload)"); ax.set_ylabel("Outs Per Effort (OPE)")
+ax.set_title("OPE is blind to workload — starters and relievers judged alike")
+ax.legend(frameon=False, loc="upper left")
+style(ax); fig.tight_layout(); fig.savefig(f"{OUT}/03_ope_vs_ip.png"); plt.close()
+
+# ===== 04 results by OPE tier =====
 bins = [0, 12.2, 12.7, 13.4, 14.2, 15.0, 99]
 labs = ["<12.2", "12.2–12.7", "12.7–13.4", "13.4–14.2", "14.2–15.0", "≥15.0"]
-d3 = df.copy(); d3["tier"] = pd.cut(d3.OPE, bins=bins, labels=labs)
-g3 = d3.groupby("tier", observed=True).agg(ERA=("era", "mean"), OPS=("ops", "mean"))
-fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(12.8, 5.4))
-x = np.arange(len(labs))
+d4 = df.copy(); d4["tier"] = pd.cut(d4.OPE, bins=bins, labels=labs)
+g4 = d4.groupby("tier", observed=True).agg(ERA=("era", "mean"), OPS=("ops", "mean"))
+fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(12.8, 5.4)); xx = np.arange(len(labs))
 for ax, col, ylab, fmt in [(ax1, "ERA", "average ERA", "{:.2f}"),
                            (ax2, "OPS", "average opponent OPS", "{:.3f}")]:
-    vals = g3[col].values
-    ax.bar(x, vals, color=[cmap_step(i) for i in range(len(x))], width=0.72, zorder=3)
-    for xi, v in zip(x, vals):
-        ax.text(xi, v + (max(vals)*0.012), fmt.format(v), ha="center", va="bottom",
+    vals = g4[col].values
+    ax.bar(xx, vals, color=[cmap_step(i) for i in range(len(xx))], width=0.72, zorder=3)
+    for xi, v in zip(xx, vals):
+        ax.text(xi, v + max(vals)*0.012, fmt.format(v), ha="center", va="bottom",
                 fontsize=11, fontweight="bold", color=INK)
-    ax.set_xticks(x); ax.set_xticklabels(labs, fontsize=9.5, rotation=0)
+    ax.set_xticks(xx); ax.set_xticklabels(labs, fontsize=9.5)
     ax.set_xlabel("OPE tier"); ax.set_ylabel(ylab)
     ax.set_title(f"Climb an OPE tier, {col} drops"); style(ax); ax.grid(axis="x", visible=False)
 fig.suptitle("Every step up in OPE means better results", fontsize=15, fontweight="bold")
-fig.tight_layout(rect=[0, 0, 1, 0.96]); fig.savefig(f"{OUT}/3_ope_vs_results.png"); plt.close()
+fig.tight_layout(rect=[0, 0, 1, 0.96]); fig.savefig(f"{OUT}/04_ope_vs_results.png"); plt.close()
 
-# ===== 4. correlation bars =====
+# ===== 05 correlation bars =====
 mets = [("OPS", "ops"), ("WHIP", "whip"), ("ERA", "era"), ("FIP", "FIP"),
         ("HR/9", "HR9"), ("BB/9", "BB9"), ("K/9", "K9")]
 vals = [df.OPE.corr(df[c]) for _, c in mets]
@@ -107,9 +149,9 @@ ax.set_title("What OPE captures — and what it does not")
 ax.text(0.30, 0.13, "weak K/9 tie:\nOPE is not just strikeouts", transform=ax.transAxes,
         fontsize=10.5, color=INK2, ha="center")
 style(ax); ax.grid(axis="y", visible=False)
-fig.tight_layout(); fig.savefig(f"{OUT}/4_correlations.png"); plt.close()
+fig.tight_layout(); fig.savefig(f"{OUT}/05_correlations.png"); plt.close()
 
-# ===== 5. distribution + tiers =====
+# ===== 06 distribution + tiers =====
 q50, q75, q90 = df.OPE.quantile(.5), df.OPE.quantile(.75), df.OPE.quantile(.9)
 fig, ax = plt.subplots(figsize=(9.4, 5.4))
 ax.hist(df.OPE, bins=34, color="#9ec5f4", edgecolor=SURF, linewidth=1.2, zorder=3)
@@ -123,11 +165,25 @@ for xv, lab, c, yf in [(q50, "Average · 50th", INK2, 0.62), (q75, "Good · 75th
 ax.set_xlabel("Outs Per Effort"); ax.set_ylabel("pitcher-seasons")
 ax.set_title("The OPE scale (MLB 2023–2025, IP ≥ 50)")
 style(ax); ax.grid(axis="x", visible=False)
-fig.tight_layout(); fig.savefig(f"{OUT}/5_distribution.png"); plt.close()
+fig.tight_layout(); fig.savefig(f"{OUT}/06_distribution.png"); plt.close()
 
-# ===== 6. team OPE =====
-d6 = df.copy(); d6["team_n"] = d6["team"].replace({"Oakland Athletics": "Athletics"})
-tm = d6.groupby("team_n").OPE.mean().sort_values()
+# ===== 07 league OPE trend over time =====
+bt = base[(base.season != 2020) & (base.season != 2026)].sort_values("season")  # drop short seasons
+fig, ax = plt.subplots(figsize=(11, 5.4))
+ax.plot(bt.season, bt.lgOPE, color=BLUE, lw=2.6, marker="o", ms=4, zorder=3)
+for yr, txt, dy in [(2000, "steroid-era offense\npeaks → OPE bottoms", -1.15),
+                    (2019, "juiced-ball\nHR spike", -1.0)]:
+    yv = lgmap[yr]
+    ax.scatter([yr], [yv], color=RED, s=60, zorder=5)
+    ax.annotate(txt, xy=(yr, yv), xytext=(yr, yv+dy), color=RED, fontsize=9.5,
+                ha="center", va="top", arrowprops=dict(arrowstyle="-", color=RED, lw=1.2))
+ax.set_xlabel("season"); ax.set_ylabel("league-average OPE")
+ax.set_title("League-average OPE mirrors the run-scoring environment (1988–2025)")
+style(ax); fig.tight_layout(); fig.savefig(f"{OUT}/07_league_trend.png"); plt.close()
+
+# ===== 08 team OPE =====
+d8 = df.copy(); d8["team_n"] = d8["team"].replace({"Oakland Athletics": "Athletics"})
+tm = d8.groupby("team_n").OPE.mean().sort_values()
 fig, ax = plt.subplots(figsize=(9, 8.4))
 norm = (tm.values - tm.values.min()) / (tm.values.max() - tm.values.min())
 cmap = mpl.colors.LinearSegmentedColormap.from_list("b", ["#cde2fb", BLUE_D])
@@ -136,42 +192,55 @@ ax.set_yticks(np.arange(len(tm))); ax.set_yticklabels(tm.index, fontsize=9.5)
 ax.set_xlim(tm.values.min()-0.4, tm.values.max()+0.2)
 ax.set_xlabel("team average OPE"); ax.set_title("Staff efficiency by team (2023–2025 pooled)")
 style(ax); ax.grid(axis="y", visible=False)
-fig.tight_layout(); fig.savefig(f"{OUT}/6_team_ope.png"); plt.close()
+fig.tight_layout(); fig.savefig(f"{OUT}/08_team_ope.png"); plt.close()
 
-# ===== 7. Cy Young scorecard (dumbbell: winner OPE vs league OPE leader) =====
+# ===== 09 Cy Young percentile =====
 winners = [(2023,"AL","Gerrit Cole"),(2023,"NL","Blake Snell"),(2024,"AL","Tarik Skubal"),
            (2024,"NL","Chris Sale"),(2025,"AL","Tarik Skubal"),(2025,"NL","Paul Skenes")]
 rows = []
 for yr, lg, win in winners:
-    pool = df[(df.season==yr)&(df.lg==lg)&(df.role=="SP")&(df.IP>=120)].sort_values("OPE", ascending=False)
-    leader = pool.iloc[0]
-    w = pool[pool.player_name==win].iloc[0]
-    rows.append(dict(label=f"{yr} {lg}  {win}", win_ope=w.OPE, lead_ope=leader.OPE,
-                     leader=leader.player_name, gap=leader.OPE-w.OPE))
-sc = pd.DataFrame(rows).sort_values("gap")
-fig, ax = plt.subplots(figsize=(10.5, 5.6)); yv = np.arange(len(sc))
+    pool = df[(df.season==yr)&(df.lg==lg)&(df.role=="SP")&(df.IP>=120)].sort_values("OPE", ascending=False).reset_index(drop=True)
+    pool["rk"] = pool.index+1; r = pool[pool.player_name==win].iloc[0]
+    pct = 100*(1-(r.rk-0.5)/len(pool))
+    rows.append(dict(label=f"{win}  ({yr} {lg})", pct=pct, rk=int(r.rk), n=len(pool)))
+sc = pd.DataFrame(rows).sort_values("pct")
+fig, ax = plt.subplots(figsize=(10, 5.4)); yv = np.arange(len(sc))
+colors = [RED if p < 80 else AQUA for p in sc.pct]
+ax.barh(yv, sc.pct, color=colors, height=0.66, zorder=3)
 for i, r in enumerate(sc.itertuples()):
-    ax.plot([r.win_ope, r.lead_ope], [i, i], color=GRID, lw=3, zorder=1)
-    ax.scatter(r.lead_ope, i, s=70, color=INK2, zorder=3)
-    big = r.gap > 0.5
-    ax.scatter(r.win_ope, i, s=110, color=RED if big else AQUA, zorder=4)
-    if r.leader != r.label.split("  ")[1]:
-        ax.text(r.lead_ope+0.05, i, r.leader, va="center", fontsize=9, color=INK2)
+    ax.text(r.pct-1.5, i, f"{r.pct:.0f}th pct", va="center", ha="right", fontsize=10, fontweight="bold", color="white")
+    ax.text(r.pct+1.5, i, f"#{r.rk} of {r.n} starters", va="center", ha="left", fontsize=9.5, color=INK2)
 ax.set_yticks(yv); ax.set_yticklabels(sc.label, fontsize=10.5)
-ax.set_xlabel("Outs Per Effort")
-ax.set_title("Cy Young winners vs their league's OPE leader")
-from matplotlib.lines import Line2D
-ax.legend(handles=[Line2D([],[],marker="o",color="w",markerfacecolor=AQUA,markersize=10,label="winner ≈ OPE elite"),
-                   Line2D([],[],marker="o",color="w",markerfacecolor=RED,markersize=10,label="winner well below OPE leader"),
-                   Line2D([],[],marker="o",color="w",markerfacecolor=INK2,markersize=9,label="that year's league OPE leader")],
-          frameon=False, loc="lower left", fontsize=9.5)
+ax.set_xlim(0, 118); ax.set_xlabel("OPE rank within league (percentile among qualified starters)")
+ax.set_title("Where each Cy Young winner ranked by OPE")
+ax.axvline(80, color=INK2, lw=1, ls=(0,(4,3)))
 style(ax); ax.grid(axis="y", visible=False)
-fig.tight_layout(); fig.savefig(f"{OUT}/7_cy_young.png"); plt.close()
+fig.tight_layout(); fig.savefig(f"{OUT}/09_cy_young.png"); plt.close()
 
-# ===== 8. legends career trajectory (era-adjusted OPE+) =====
-base = pd.read_csv(os.path.join(DATA, "pe_league_baseline.csv"))
-base["lgOPE"] = 100*base["lg_outs"]/(base["lg_pitches"]+W*base["lg_totalBases"])
-lgmap = dict(zip(base.season, base.lgOPE))
+# ===== 10 finesse: K/9 vs OPE+ =====
+fin = career_table(os.path.join(DATA, "pe_finesse.csv"),
+                   ["Jamie Moyer","Mark Buehrle","Dan Haren","Tyler Rogers"])
+leg = career_table(os.path.join(DATA, "pe_legends.csv"),
+                   ["Greg Maddux","Pedro Martínez","Justin Verlander"])
+fig, ax = plt.subplots(figsize=(10, 6))
+ax.axhline(100, color=INK, lw=1.4, ls=(0,(5,3))); ax.text(5.05, 100.35, "league average (100)", color=INK, fontsize=9.5, ha="left")
+def plot_pt(name, d, color, dx=0.12, dy=0.6, ha="left"):
+    ax.scatter(d["K9"], d["OPEplus"], s=130, color=color, zorder=4, edgecolor=SURF, linewidth=1.5)
+    ax.annotate(name, (d["K9"], d["OPEplus"]), xytext=(d["K9"]+dx, d["OPEplus"]+dy),
+                fontsize=10, fontweight="bold", color=color, ha=ha)
+for n in ["Jamie Moyer","Mark Buehrle","Dan Haren","Tyler Rogers"]:
+    plot_pt(n.split()[-1], fin[n], VIOLET)
+plot_pt("Maddux", leg["Greg Maddux"], VIOLET)
+plot_pt("Martínez", leg["Pedro Martínez"], ORANGE)
+plot_pt("Verlander", leg["Justin Verlander"], ORANGE)
+ax.text(5.05, 111.8, "finesse / contact managers", color=VIOLET, fontweight="bold", fontsize=11, ha="left")
+ax.text(9.25, 108.2, "power pitchers", color=ORANGE, fontweight="bold", fontsize=11, ha="left")
+ax.set_xlabel("career strikeouts per 9 innings (K/9)")
+ax.set_ylabel("career OPE+  (100 = league average)")
+ax.set_title("Two roads to efficiency: OPE+ credits finesse and power alike")
+style(ax); fig.tight_layout(); fig.savefig(f"{OUT}/10_finesse.png"); plt.close()
+
+# ===== 11 legends career OPE+ =====
 L = pd.read_csv(os.path.join(DATA, "pe_legends.csv"))
 L["IP"] = pd.to_numeric(L["inningsPitched"], errors="coerce")
 L["numberOfPitches"] = pd.to_numeric(L["numberOfPitches"], errors="coerce")
@@ -179,14 +248,13 @@ def dedupe(g):
     if g["team"].isna().any(): return g[g["team"].isna()].iloc[0]
     return g.sort_values("IP", ascending=False).iloc[0]
 Ld = pd.DataFrame([dedupe(g) for _, g in L.groupby(["player_name","season"])])
-# require realistic pitch counts (pre-1988 pitch data is incomplete)
 Ld = Ld[(Ld.IP >= 40) & (Ld.numberOfPitches / Ld.IP >= 13)].copy()
 Ld["OPE"] = 100*Ld["outs"]/(Ld["numberOfPitches"]+W*Ld["totalBases"])
-Ld["OPEplus"] = 100*Ld["OPE"]/Ld["season"].map(lgmap)   # 100 = league average that season
+Ld["OPEplus"] = 100*Ld["OPE"]/Ld["season"].map(lgmap)
 print("legend era-adjusted OPE+ (mean, sd):")
 for pl in ["Greg Maddux","Mariano Rivera","Clayton Kershaw","Pedro Martínez","Justin Verlander"]:
     s = Ld[Ld.player_name == pl]
-    print(f"  {pl}: OPE+ {s.OPEplus.mean():.0f} ± {s.OPEplus.std():.0f}  ({int(s.season.min())}-{int(s.season.max())})")
+    print(f"  {pl}: OPE+ {s.OPEplus.mean():.0f} ± {s.OPEplus.std():.0f}")
 order = ["Mariano Rivera","Greg Maddux","Clayton Kershaw","Pedro Martínez","Justin Verlander"]
 cols = {"Greg Maddux":BLUE,"Mariano Rivera":ORANGE,"Clayton Kershaw":AQUA,
         "Pedro Martínez":VIOLET,"Justin Verlander":YELLOW}
@@ -200,9 +268,9 @@ for pl in order:
 ax.set_xlabel("season"); ax.set_ylabel("OPE+  (100 = league average that year)")
 ax.set_title("Greatness is consistency: era-adjusted OPE across HOF careers")
 ax.set_xlim(1987, 2029); style(ax)
-fig.tight_layout(); fig.savefig(f"{OUT}/8_legends.png"); plt.close()
+fig.tight_layout(); fig.savefig(f"{OUT}/11_legends.png"); plt.close()
 
-# ===== 9. 2026 leaderboard (SP so far) =====
+# ===== 12 2026 leaderboard =====
 d26 = pd.read_csv(os.path.join(DATA, "pe_data_2026.csv"))
 d26["IP"] = pd.to_numeric(d26["inningsPitched"], errors="coerce")
 d26["era"] = pd.to_numeric(d26["era"], errors="coerce")
@@ -219,7 +287,7 @@ ax.set_yticks(yv); ax.set_yticklabels([f"{r.player_name} ({r.team.split()[-1]})"
 ax.set_xlim(12, top.OPE.max()+0.4); ax.set_xlabel("Outs Per Effort (2026 to date, IP ≥ 60)")
 ax.set_title("2026 OPE leaderboard — starters, midseason")
 style(ax); ax.grid(axis="y", visible=False)
-fig.tight_layout(); fig.savefig(f"{OUT}/9_ope_2026.png"); plt.close()
+fig.tight_layout(); fig.savefig(f"{OUT}/12_ope_2026.png"); plt.close()
 
-print("wrote 9 charts to", OUT)
-print(os.listdir(OUT))
+print("wrote charts to", OUT)
+print(sorted(os.listdir(OUT)))
