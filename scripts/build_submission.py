@@ -18,10 +18,20 @@ FILE_BASE = f"{REPO}/tree/{SHA}"
 
 md = open(os.path.join(ROOT, "README.md"), encoding="utf-8").read()
 md = md.split("---", 1)[1].lstrip("\n")                       # drop title + byline block
+
+# formula -> plain bold (no inline style; WordPress strips style for contributors)
 md = re.sub(r"\$\$.*?\$\$",
-            '<p style="text-align:center;font-size:1.5em;margin:1em 0;">'
-            '<strong>OPE = (100 &times; outs) &divide; (pitches + 4 &times; TB)</strong></p>',
+            '<p><strong>OPE = (100 &times; outs) &divide; (pitches + 4 &times; TB)</strong></p>',
             md, flags=re.S)
+
+# Markdown tables get stripped by the FanGraphs editor, so swap each one (in order)
+# for a pre-rendered table image.
+TABLE_IMGS = ["t01_tiers.png", "t02_top15.png", "t03_topsp.png",
+              "t04_glasnow_morton.png", "t05_price_verlander.png", "t06_legends.png"]
+_ti = iter(TABLE_IMGS)
+md = re.sub(r"(?m)(?:^[ \t]*\|.*(?:\n|$))+",
+            lambda m: f"\n![data table](charts/{next(_ti)})\n", md)
+
 md = re.sub(r"\]\(charts/", f"]({IMG_BASE}/", md)             # images -> raw URLs
 
 def absify(m):
@@ -36,8 +46,9 @@ dek = (
     f'A version of this article first appeared at <a href="{SITE}">chunghaolee.com</a>; '
     f'the full data and code are on <a href="{REPO}">GitHub</a>.</em></p>\n'
 )
-body = markdown.markdown(md, extensions=["tables", "attr_list", "sane_lists"])
-body = body.replace("<img ", '<img style="max-width:100%;height:auto;" ')
+body = markdown.markdown(md, extensions=["attr_list", "sane_lists"])
+# width as an attribute (KSES keeps width but strips style); no inline styles anywhere
+body = body.replace("<img ", '<img width="680" ')
 
 out = os.path.join(ROOT, "submission", "fangraphs_submission.html")
 os.makedirs(os.path.dirname(out), exist_ok=True)
