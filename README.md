@@ -5,13 +5,11 @@
 
 ---
 
-In 2023, Blake Snell won the National League Cy Young Award with a glittering 2.25 ERA. He also walked more batters than anyone else in the league and needed 17.6 pitches to get through a typical inning. Three hundred miles up the coast, Logan Webb quietly threw 216 innings of strike-pounding, ground-ball baseball and finished with a 3.25 ERA — a full run higher.
+Greg Maddux made an art form out of the cheap out. In his prime he would finish a complete game with his pitch count still in the 80s — barely a strikeout in sight, just soft contact and quick innings — and the feat became so linked to him that a complete-game shutout on under 100 pitches is now simply called a *Maddux*.
 
-By the number everyone knows, Snell was the best pitcher in the league. But was he the most *efficient*? Your gut says no. **The problem is that our simplest stat can't tell you why.**
+We have always admired that kind of pitching. What we have never quite had is a *number* for it — a clean way to say how efficiently a pitcher turns his work into outs. ERA counts the runs that scored; strikeout rate counts the bats he missed; neither quite captures the thing Maddux did best.
 
-This is the gap I wanted to close — with a number you can compute in your head.
-
-That number is **Outs Per Effort (OPE)**, and it rests on a single idea: *a pitcher's job is to buy outs, and we should measure how cheaply he buys them.* The rest of this piece builds OPE from that one sentence, then puts it through four tests — is it **fair** to every kind of pitcher, is it **accurate**, does it **see what ERA can't**, and does it **hold up across careers and eras?** If it passes, we'll have a stat that's as easy as ERA but a good deal more honest.
+This piece is about a stat that tries to — and one you can work out in your head. It's called **Outs Per Effort (OPE)**, and it rests on a single idea: *a pitcher's job is to buy outs, and we can measure how cheaply he buys them.* The rest of this piece builds OPE from that one sentence, then puts it through four tests — is it **fair** to every kind of pitcher, is it **accurate**, does it **agree with how the game already crowns its best**, and does it **hold up across careers and eras?** Along the way it also does something the familiar stats don't: it finally puts a number on pitchers like Maddux. If it passes, we'll have a stat as easy as ERA with a wider field of view.
 
 ## The trade-off we keep making
 
@@ -171,24 +169,24 @@ Consider two starters:
 | Tyler Glasnow | 2024 | 3.49 | **15.0** | Elite |
 | Charlie Morton | 2023 | 3.64 | **13.1** | Below average |
 
-**To ERA, they're near-twins.** OPE puts a full tier between them. The difference is in the process: Glasnow overpowered hitters and gave up almost nothing; Morton grinded, allowing far more baserunners for the same bottom-line ERA. ERA saw two similar results. OPE saw two very different pitchers — which is the whole point, and it sets up the sternest test of all.
+**To ERA, they're near-twins.** OPE puts a full tier between them: Glasnow overpowered hitters and gave up almost nothing, while Morton worked harder for the same bottom-line ERA. Same result, different process — and reading that difference is exactly the dimension OPE is built to add.
 
-## Test 3 — seeing what ERA can't: OPE vs the voters
+## Test 3 — does OPE agree with how we crown the best?
 
-If OPE really captures something ERA misses, it should occasionally *disagree* with the sport's official verdict — and have a point when it does. So I pulled every Cy Young winner from 2023–2025 and found where they ranked in their own league's OPE:
+A brand-new stat earns trust not by overturning the experts, but by recognizing the same greatness they do. So I pulled every Cy Young winner from 2023–2025 and checked where each ranked in his own league by OPE:
 
-![Where each Cy Young winner ranked by OPE](charts/09_cy_young.png)
+![OPE agrees with the Cy Young voters](charts/09_cy_young.png)
 
-For the efficiency-driven winners, OPE and the writers are in lockstep: Skubal, Cole and Skenes all sit in the 94th percentile or better among their league's starters. These were dominant, economical seasons, and OPE says so.
+The verdict is reassuring: every winner ranks among the most efficient starters in his league — most of them in the 90th percentile or better, all of them well above average. When the writers hand out the hardware, OPE is nodding along.
 
-Then there's **Blake Snell, 2023** — the pitcher we opened with, and the one glaring outlier at the 71st percentile. Here's why, side by side with the man OPE would have crowned instead:
+What makes OPE worth having is that it adds a *distinct* lens rather than a redundant one — and the closest Cy Young race in recent memory shows how. In 2012 the AL award came down to two of the era's best seasons, David Price and Justin Verlander:
 
-| 2023 NL | IP | ERA | FIP | Walks | Pitches/inning | OPE |
-|---|:--:|:--:|:--:|:--:|:--:|:--:|
-| Blake Snell (Cy Young) | 180.0 | 2.25 | 3.38 | **99** | **17.6** | 13.86 |
-| Logan Webb (OPE's pick) | 216.0 | 3.25 | 3.10 | **31** | **14.7** | 14.75 |
+| 2012 AL | ERA | IP | K | WHIP | OPE |
+|---|:--:|:--:|:--:|:--:|:--:|
+| David Price (winner) | 2.56 | 211.0 | 205 | 1.10 | **14.69** |
+| Justin Verlander | 2.64 | 238.1 | 239 | 1.06 | **14.47** |
 
-They threw almost the same number of pitches. Webb turned his into 36 more innings, with a third the walks and a better FIP. Snell's ERA was lower — he was brilliant at stranding the traffic he created — but by every measure of *process*, Webb was the more efficient pitcher, and even FIP agrees with OPE over ERA here. **This is the clearest illustration of what OPE adds: it grades the pitching, not just the scoreboard.**
+Three great stats, three angles on the same brilliant pair. ERA gives Price the narrowest of edges. WAR leans toward Verlander, rewarding his extra 27 innings and 34 strikeouts. And OPE — a pure efficiency rate — lands with Price too: pitch for pitch, base for base, he was a shade more economical. None of them is "right," because they answer different questions. WAR asks *how much value* a pitcher piled up; OPE asks *how efficiently* he worked. **OPE doesn't replace ERA or WAR — it pulls up a chair and adds the efficiency seat to the table**, and here it happens to agree with the voters' call.
 
 ## Test 4 — greatness is consistency
 

@@ -205,15 +205,14 @@ for yr, lg, win in winners:
     rows.append(dict(label=f"{win}  ({yr} {lg})", pct=pct, rk=int(r.rk), n=len(pool)))
 sc = pd.DataFrame(rows).sort_values("pct")
 fig, ax = plt.subplots(figsize=(10, 5.4)); yv = np.arange(len(sc))
-colors = [RED if p < 80 else AQUA for p in sc.pct]
-ax.barh(yv, sc.pct, color=colors, height=0.66, zorder=3)
+ax.barh(yv, sc.pct, color=AQUA, height=0.66, zorder=3)
 for i, r in enumerate(sc.itertuples()):
     ax.text(r.pct-1.5, i, f"{r.pct:.0f}th pct", va="center", ha="right", fontsize=10, fontweight="bold", color="white")
     ax.text(r.pct+1.5, i, f"#{r.rk} of {r.n} starters", va="center", ha="left", fontsize=9.5, color=INK2)
 ax.set_yticks(yv); ax.set_yticklabels(sc.label, fontsize=10.5)
 ax.set_xlim(0, 118); ax.set_xlabel("OPE rank within league (percentile among qualified starters)")
-ax.set_title("Where each Cy Young winner ranked by OPE")
-ax.axvline(80, color=INK2, lw=1, ls=(0,(4,3)))
+ax.set_title("OPE agrees with the Cy Young voters")
+ax.axvline(50, color=INK2, lw=1, ls=(0,(4,3))); ax.text(50, len(sc)-0.4, " league average", color=INK2, fontsize=9, va="top")
 style(ax); ax.grid(axis="y", visible=False)
 fig.tight_layout(); fig.savefig(f"{OUT}/09_cy_young.png"); plt.close()
 
