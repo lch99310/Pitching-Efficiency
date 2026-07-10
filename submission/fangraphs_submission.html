@@ -1,4 +1,3 @@
-<p><em>Data: MLB Stats API, 2023&ndash;2025 (~1,000 pitcher-seasons, IP &ge; 50). A version of this article first appeared at <a href="https://chunghaolee.com/portfolio/outs_per_effort/">chunghaolee.com</a>; the full data and code are on <a href="https://github.com/lch99310/Pitching-Efficiency">GitHub</a>.</em></p>
 <p>Greg Maddux made an art form out of the cheap out. In his prime he would finish a complete game with his pitch count still in the 80s — barely a strikeout in sight, just soft contact and quick innings — and the feat became so linked to him that a complete-game shutout on under 100 pitches is now simply called a <em>Maddux</em>.</p>
 <p>We have always admired that kind of pitching. What we have never quite had is a <em>number</em> for it — a clean way to say how efficiently a pitcher turns his work into outs. ERA counts the runs that scored; strikeout rate counts the bats he missed; neither quite captures the thing Maddux did best.</p>
 <p>This piece is about a stat that tries to — and one you can work out in your head. It's called <strong>Outs Per Effort (OPE)</strong>, and it rests on a single idea: <em>a pitcher's job is to buy outs, and we can measure how cheaply he buys them.</em> The rest of this piece builds OPE from that one sentence, then puts it through four tests — is it <strong>fair</strong> to every kind of pitcher, is it <strong>accurate</strong>, does it <strong>agree with how the game already crowns its best</strong>, and does it <strong>hold up across careers and eras?</strong> Along the way it also does something the familiar stats don't: it finally puts a number on pitchers like Maddux. If it passes, we'll have a stat as easy as ERA with a wider field of view.</p>
@@ -20,7 +19,7 @@
 </ol>
 <p>Two costs, one goal. Put them on the same bill, and you get the metric.</p>
 <h2>The formula</h2>
-<p><strong>OPE = (100 &times; outs) &divide; (pitches + 4 &times; TB)</strong></p>
+<p style="text-align:center;font-size:1.4em;margin:1em 0;"><strong>OPE = (100 &times; outs) &divide; (pitches + 4 &times; TB)</strong></p>
 
 <p>Outs, pitches thrown, total bases allowed — three numbers off any box score, one line of arithmetic. The best way to read it is backwards: the denominator is the <strong>total cost</strong> a pitcher pays — every pitch he throws, plus a penalty for every base he gives up — and OPE asks how many outs he squeezed out of that cost. It is, quite literally, an <strong>efficiency</strong>: outs produced per unit of effort spent, scaled so that <em>higher is better</em>. (That <code>100</code> is just there to land the numbers in a friendly range.)</p>
 <p>The <code>4</code> has a one-sentence translation any fan can hold onto:</p>
@@ -35,10 +34,10 @@
 <li><strong>The math argument.</strong> The chart below (left) tracks how OPE correlates with innings pitched as the weight changes. <strong>That line crosses zero right around 4</strong> — meaning "a base ≈ four pitches" is also precisely the value that makes OPE <em>independent of workload</em> (more on why that matters next).</li>
 </ul>
 <p>And it's robust: for any weight from 2 to 6, the leaderboard barely moves (Spearman rank agreement ≥ 0.97). The result isn't an artifact of a hand-tuned constant.</p>
-<p><img width="680" alt="Why the weight is 4" src="https://raw.githubusercontent.com/lch99310/Pitching-Efficiency/dccfbdebc5349c60be43e8e83efc6f0757aca43f/charts/02_why_w4.png" /></p>
+<p><img style="max-width:100%;height:auto;" alt="Why the weight is 4" src="https://raw.githubusercontent.com/lch99310/Pitching-Efficiency/85de233a2a2c07df362e99652ccb2b3492b059d2/charts/02_why_w4.png" /></p>
 <h3>See it in one inning</h3>
 <p>That's the theory; here's the feel of it. Picture three relievers who each throw a <em>scoreless</em> inning — 3 outs, nobody scores, an identical 0.00 ERA. To ERA they are triplets. Watch OPE pull them apart:</p>
-<p><img width="680" alt="Three scoreless innings, three different OPEs" src="https://raw.githubusercontent.com/lch99310/Pitching-Efficiency/dccfbdebc5349c60be43e8e83efc6f0757aca43f/charts/01_example.png" /></p>
+<p><img style="max-width:100%;height:auto;" alt="Three scoreless innings, three different OPEs" src="https://raw.githubusercontent.com/lch99310/Pitching-Efficiency/85de233a2a2c07df362e99652ccb2b3492b059d2/charts/01_example.png" /></p>
 <ul>
 <li><strong>Pitcher A</strong> needs 15 pitches and gives up a harmless single → OPE <strong>15.8</strong>. Our baseline.</li>
 <li><strong>Pitcher B</strong> does the same job on <em>12 pitches</em> → OPE <strong>18.8</strong>. He was more <strong>economical</strong>, so he rates higher.</li>
@@ -48,55 +47,363 @@
 <h2>Test 1 — OPE is fair to starters and relievers alike</h2>
 <p>A good efficiency stat shouldn't quietly reward you for pitching <em>more</em> or <em>less</em>. A 200-inning starter and a 60-inning reliever should stand on the same line.</p>
 <p>Because OPE's numerator (outs) and denominator (pitches + bases) both scale with innings, workload cancels out of the ratio:</p>
-<p><img width="680" alt="OPE vs innings pitched" src="https://raw.githubusercontent.com/lch99310/Pitching-Efficiency/dccfbdebc5349c60be43e8e83efc6f0757aca43f/charts/03_ope_vs_ip.png" /></p>
+<p><img style="max-width:100%;height:auto;" alt="OPE vs innings pitched" src="https://raw.githubusercontent.com/lch99310/Pitching-Efficiency/85de233a2a2c07df362e99652ccb2b3492b059d2/charts/03_ope_vs_ip.png" /></p>
 <p>The correlation between OPE and innings pitched is <strong>−0.02 — effectively zero.</strong> Relievers (orange) and starters (blue) intermingle, and the trend line is flat. OPE measures efficiency itself, not how long you were on the mound.</p>
 <h2>Test 2 — OPE tracks how good a pitcher actually is</h2>
 <p>Fairness is nice; accuracy is the point. If OPE means anything, better OPE should translate into better results — lower ERAs, weaker opponent hitting lines. So let's sort every pitcher-season into OPE tiers and look at what each tier actually produced:</p>
-<p><img width="680" alt="Results by OPE tier" src="https://raw.githubusercontent.com/lch99310/Pitching-Efficiency/dccfbdebc5349c60be43e8e83efc6f0757aca43f/charts/04_ope_vs_results.png" /></p>
+<p><img style="max-width:100%;height:auto;" alt="Results by OPE tier" src="https://raw.githubusercontent.com/lch99310/Pitching-Efficiency/85de233a2a2c07df362e99652ccb2b3492b059d2/charts/04_ope_vs_results.png" /></p>
 <p>The staircase is perfect: each step up in OPE drops the average ERA, from a brutal 5.80 in the bottom tier to a sparkling 2.44 at the top, with opponent OPS falling in lockstep. Put another way, OPE correlates with ERA at −0.82 and with opponent OPS at −0.89. And it isn't just those two — line OPE up against every standard measure of run prevention and the relationship holds across the board:</p>
-<p><img width="680" alt="What OPE correlates with" src="https://raw.githubusercontent.com/lch99310/Pitching-Efficiency/dccfbdebc5349c60be43e8e83efc6f0757aca43f/charts/05_correlations.png" /></p>
+<p><img style="max-width:100%;height:auto;" alt="What OPE correlates with" src="https://raw.githubusercontent.com/lch99310/Pitching-Efficiency/85de233a2a2c07df362e99652ccb2b3492b059d2/charts/05_correlations.png" /></p>
 <p>Opponent OPS, WHIP, ERA, FIP, home-run rate — OPE tracks all of them tightly. But look at the bottom bar: <strong>OPE's tie to strikeout rate (K/9) is a weak +0.18.</strong> That's not a bug — it's the most interesting thing about the stat.</p>
 <h2>The pitchers OPE finally lets us appreciate</h2>
 <p>Most of our best pitching stats lean, directly or indirectly, on missing bats. That leaves a whole tradition of pitcher underserved: the soft-tossers who rarely strike anyone out, but let hitters make contact <em>badly</em> — weak grounders and lazy flies that turn into outs. We always sort of knew these guys were useful. We never had a clean number for it.</p>
 <p>OPE does. Because it rewards economy and contact management rather than swing-and-miss, it puts real value on exactly what these pitchers do. Take submariner <strong>Tyler Rogers</strong>: in 2025 he struck out just 5.6 per nine — bottom-of-the-league bat-missing — yet posted a <strong>17.5 OPE</strong>, one of the best marks in baseball, because he needed only 12.7 pitches an inning and gave up next to nothing.</p>
 <p>Zoom out over full careers (era-adjusted to <strong>OPE+</strong>, where 100 is the league average — more on that later), and the pattern is striking:</p>
-<p><img width="680" alt="Finesse vs power: both reach high OPE+" src="https://raw.githubusercontent.com/lch99310/Pitching-Efficiency/dccfbdebc5349c60be43e8e83efc6f0757aca43f/charts/10_finesse.png" /></p>
+<p><img style="max-width:100%;height:auto;" alt="Finesse vs power: both reach high OPE+" src="https://raw.githubusercontent.com/lch99310/Pitching-Efficiency/85de233a2a2c07df362e99652ccb2b3492b059d2/charts/10_finesse.png" /></p>
 <p>Jamie Moyer and Mark Buehrle each struck out barely five per nine — half the rate of a modern power arm — and still finished <em>above</em> the league line for two decades apiece (OPE+ 102 and 104). And there in the same low-strikeout neighborhood sits <strong>Greg Maddux</strong> (OPE+ 115), the greatest command artist of them all, level with the flame-throwing Pedro Martínez (112). <strong>There are two roads to efficiency — overpower the hitter, or never let him square it up — and OPE is one of the few stats that honors both.</strong></p>
 <h2>The scale: how high is good?</h2>
 <p>Every stat needs a ruler. From the full 2023–2025 distribution:</p>
-<p><img width="680" alt="The OPE distribution and tiers" src="https://raw.githubusercontent.com/lch99310/Pitching-Efficiency/dccfbdebc5349c60be43e8e83efc6f0757aca43f/charts/06_distribution.png" /></p>
-<p><img width="680" alt="data table" src="https://raw.githubusercontent.com/lch99310/Pitching-Efficiency/dccfbdebc5349c60be43e8e83efc6f0757aca43f/charts/t01_tiers.png" /></p>
+<p><img style="max-width:100%;height:auto;" alt="The OPE distribution and tiers" src="https://raw.githubusercontent.com/lch99310/Pitching-Efficiency/85de233a2a2c07df362e99652ccb2b3492b059d2/charts/06_distribution.png" /></p>
+<table>
+<thead>
+<tr>
+<th>Tier</th>
+<th style="text-align: center;">OPE</th>
+<th>Meaning</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>🟦 <strong>Elite</strong></td>
+<td style="text-align: center;">≥ 15.0</td>
+<td>top 10% — Cy Young class</td>
+</tr>
+<tr>
+<td>🔵 <strong>Good</strong></td>
+<td style="text-align: center;">14.2&nbsp;&ndash;&nbsp;15.0</td>
+<td>top 25% — a dependable starter or high-leverage reliever</td>
+</tr>
+<tr>
+<td>⚪ <strong>Average</strong></td>
+<td style="text-align: center;">≈ 13.4</td>
+<td>the league median</td>
+</tr>
+<tr>
+<td>🔸 <strong>Below&nbsp;average</strong></td>
+<td style="text-align: center;">12.7&nbsp;&ndash;&nbsp;13.4</td>
+<td>back-of-rotation / middle relief</td>
+</tr>
+<tr>
+<td>🔻 <strong>Struggling</strong></td>
+<td style="text-align: center;">&lt; 12.2</td>
+<td>bottom 10%</td>
+</tr>
+</tbody>
+</table>
 <p>Three anchors are enough to carry in your head: <strong>15 is elite, 13.4 is average, below 12 is trouble.</strong></p>
 <p>Is this ruler stable? Across 2023, 2024 and 2025 the league-average OPE was 13.05, 13.32 and 13.26 — steady to within a quarter-point, so pooling three recent seasons into one scale is safe. But zoom all the way out and the baseline does move:</p>
-<p><img width="680" alt="League-average OPE over time" src="https://raw.githubusercontent.com/lch99310/Pitching-Efficiency/dccfbdebc5349c60be43e8e83efc6f0757aca43f/charts/07_league_trend.png" /></p>
+<p><img style="max-width:100%;height:auto;" alt="League-average OPE over time" src="https://raw.githubusercontent.com/lch99310/Pitching-Efficiency/85de233a2a2c07df362e99652ccb2b3492b059d2/charts/07_league_trend.png" /></p>
 <p>League-average OPE tracks the run-scoring environment in reverse: it bottomed out around the steroid-era offensive peak of 2000, dipped again during the juiced-ball home-run surge of 2019, and rises whenever offense cools. Over 35 years it has swung from about 12.7 to 14.6 — a real gap, and the reason the career comparisons later switch to an era-adjusted version.</p>
 <h2>The leaderboard: who does OPE love?</h2>
 <p><strong>Top 15 pitcher-seasons, 2023–2025 (IP ≥ 50)</strong></p>
-<p><img width="680" alt="data table" src="https://raw.githubusercontent.com/lch99310/Pitching-Efficiency/dccfbdebc5349c60be43e8e83efc6f0757aca43f/charts/t02_top15.png" /></p>
+<table>
+<thead>
+<tr>
+<th style="text-align: center;">#</th>
+<th>Pitcher</th>
+<th style="text-align: center;">Year</th>
+<th style="text-align: center;">Team</th>
+<th style="text-align: center;">Role</th>
+<th style="text-align: center;">IP</th>
+<th style="text-align: center;">ERA</th>
+<th style="text-align: center;">OPE</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: center;">1</td>
+<td>Emmanuel Clase</td>
+<td style="text-align: center;">2024</td>
+<td style="text-align: center;">CLE</td>
+<td style="text-align: center;">RP</td>
+<td style="text-align: center;">74.1</td>
+<td style="text-align: center;">0.61</td>
+<td style="text-align: center;"><strong>18.8</strong></td>
+</tr>
+<tr>
+<td style="text-align: center;">2</td>
+<td>Raisel Iglesias</td>
+<td style="text-align: center;">2024</td>
+<td style="text-align: center;">ATL</td>
+<td style="text-align: center;">RP</td>
+<td style="text-align: center;">69.1</td>
+<td style="text-align: center;">1.95</td>
+<td style="text-align: center;"><strong>17.9</strong></td>
+</tr>
+<tr>
+<td style="text-align: center;">3</td>
+<td>Adrian Morejón</td>
+<td style="text-align: center;">2025</td>
+<td style="text-align: center;">SD</td>
+<td style="text-align: center;">RP</td>
+<td style="text-align: center;">73.2</td>
+<td style="text-align: center;">2.08</td>
+<td style="text-align: center;"><strong>17.7</strong></td>
+</tr>
+<tr>
+<td style="text-align: center;">4</td>
+<td>Tyler Rogers</td>
+<td style="text-align: center;">2025</td>
+<td style="text-align: center;">NYM</td>
+<td style="text-align: center;">RP</td>
+<td style="text-align: center;">77.1</td>
+<td style="text-align: center;">1.98</td>
+<td style="text-align: center;"><strong>17.5</strong></td>
+</tr>
+<tr>
+<td style="text-align: center;">5</td>
+<td>Aroldis Chapman</td>
+<td style="text-align: center;">2025</td>
+<td style="text-align: center;">BOS</td>
+<td style="text-align: center;">RP</td>
+<td style="text-align: center;">61.1</td>
+<td style="text-align: center;">1.17</td>
+<td style="text-align: center;"><strong>17.0</strong></td>
+</tr>
+<tr>
+<td style="text-align: center;">6</td>
+<td>Ryan Helsley</td>
+<td style="text-align: center;">2024</td>
+<td style="text-align: center;">STL</td>
+<td style="text-align: center;">RP</td>
+<td style="text-align: center;">66.1</td>
+<td style="text-align: center;">2.04</td>
+<td style="text-align: center;"><strong>16.7</strong></td>
+</tr>
+<tr>
+<td style="text-align: center;">7</td>
+<td>Brusdar Graterol</td>
+<td style="text-align: center;">2023</td>
+<td style="text-align: center;">LAD</td>
+<td style="text-align: center;">RP</td>
+<td style="text-align: center;">67.1</td>
+<td style="text-align: center;">1.20</td>
+<td style="text-align: center;"><strong>16.7</strong></td>
+</tr>
+<tr>
+<td style="text-align: center;">8</td>
+<td>Tyler Holton</td>
+<td style="text-align: center;">2024</td>
+<td style="text-align: center;">DET</td>
+<td style="text-align: center;">RP</td>
+<td style="text-align: center;">94.1</td>
+<td style="text-align: center;">2.19</td>
+<td style="text-align: center;"><strong>16.6</strong></td>
+</tr>
+<tr>
+<td style="text-align: center;">…</td>
+<td></td>
+<td style="text-align: center;"></td>
+<td style="text-align: center;"></td>
+<td style="text-align: center;"></td>
+<td style="text-align: center;"></td>
+<td style="text-align: center;"></td>
+<td style="text-align: center;"></td>
+</tr>
+<tr>
+<td style="text-align: center;">13</td>
+<td><strong>Trevor Rogers</strong></td>
+<td style="text-align: center;">2025</td>
+<td style="text-align: center;">BAL</td>
+<td style="text-align: center;"><strong>SP</strong></td>
+<td style="text-align: center;">109.2</td>
+<td style="text-align: center;">1.81</td>
+<td style="text-align: center;"><strong>16.2</strong></td>
+</tr>
+</tbody>
+</table>
 <p>The top of the board is elite relievers and closers — exactly the faces you'd expect. The highest-ranked <strong>starter</strong> is 2025's breakout Trevor Rogers. Among starters only:</p>
 <p><strong>Top starters by OPE, 2023–2025</strong></p>
-<p><img width="680" alt="data table" src="https://raw.githubusercontent.com/lch99310/Pitching-Efficiency/dccfbdebc5349c60be43e8e83efc6f0757aca43f/charts/t03_topsp.png" /></p>
+<table>
+<thead>
+<tr>
+<th style="text-align: center;">#</th>
+<th>Pitcher</th>
+<th style="text-align: center;">Year</th>
+<th style="text-align: center;">Team</th>
+<th style="text-align: center;">IP</th>
+<th style="text-align: center;">ERA</th>
+<th style="text-align: center;">OPE</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: center;">1</td>
+<td>Trevor Rogers</td>
+<td style="text-align: center;">2025</td>
+<td style="text-align: center;">BAL</td>
+<td style="text-align: center;">109.2</td>
+<td style="text-align: center;">1.81</td>
+<td style="text-align: center;"><strong>16.2</strong></td>
+</tr>
+<tr>
+<td style="text-align: center;">2</td>
+<td>Cristopher Sánchez</td>
+<td style="text-align: center;">2025</td>
+<td style="text-align: center;">PHI</td>
+<td style="text-align: center;">202.0</td>
+<td style="text-align: center;">2.50</td>
+<td style="text-align: center;"><strong>15.7</strong></td>
+</tr>
+<tr>
+<td style="text-align: center;">3</td>
+<td>Nathan Eovaldi</td>
+<td style="text-align: center;">2025</td>
+<td style="text-align: center;">TEX</td>
+<td style="text-align: center;">130.0</td>
+<td style="text-align: center;">1.73</td>
+<td style="text-align: center;"><strong>15.7</strong></td>
+</tr>
+<tr>
+<td style="text-align: center;">4</td>
+<td>Bryan Woo</td>
+<td style="text-align: center;">2024</td>
+<td style="text-align: center;">SEA</td>
+<td style="text-align: center;">121.1</td>
+<td style="text-align: center;">2.89</td>
+<td style="text-align: center;"><strong>15.6</strong></td>
+</tr>
+<tr>
+<td style="text-align: center;">5</td>
+<td><strong>Tarik Skubal</strong></td>
+<td style="text-align: center;">2025</td>
+<td style="text-align: center;">DET</td>
+<td style="text-align: center;">195.1</td>
+<td style="text-align: center;">2.21</td>
+<td style="text-align: center;"><strong>15.6</strong></td>
+</tr>
+<tr>
+<td style="text-align: center;">6</td>
+<td>Framber Valdez</td>
+<td style="text-align: center;">2024</td>
+<td style="text-align: center;">HOU</td>
+<td style="text-align: center;">176.1</td>
+<td style="text-align: center;">2.91</td>
+<td style="text-align: center;"><strong>15.5</strong></td>
+</tr>
+</tbody>
+</table>
 <p>Back-to-back Cy Young winner <strong>Tarik Skubal</strong> lands in the top of the starter board all three seasons — a reassuring sign the stat points at the right people. And it isn't only individuals: zoom out to whole staffs and the Mariners, Rays, Brewers, Padres and Phillies rise to the top — the very organizations known for developing pitching — while the Rockies (hello, Coors Field), White Sox and Nationals sit at the bottom. Nothing there will surprise you, which is the point: a new stat should agree with what we already know before it tells us something we don't.</p>
-<p><img width="680" alt="Team average OPE" src="https://raw.githubusercontent.com/lch99310/Pitching-Efficiency/dccfbdebc5349c60be43e8e83efc6f0757aca43f/charts/08_team_ope.png" /></p>
+<p><img style="max-width:100%;height:auto;" alt="Team average OPE" src="https://raw.githubusercontent.com/lch99310/Pitching-Efficiency/85de233a2a2c07df362e99652ccb2b3492b059d2/charts/08_team_ope.png" /></p>
 <h3>What OPE sees that ERA doesn't</h3>
 <p>Consider two starters:</p>
-<p><img width="680" alt="data table" src="https://raw.githubusercontent.com/lch99310/Pitching-Efficiency/dccfbdebc5349c60be43e8e83efc6f0757aca43f/charts/t04_glasnow_morton.png" /></p>
+<table>
+<thead>
+<tr>
+<th>Pitcher</th>
+<th style="text-align: center;">Year</th>
+<th style="text-align: center;">ERA</th>
+<th style="text-align: center;">OPE</th>
+<th>Tier</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Tyler Glasnow</td>
+<td style="text-align: center;">2024</td>
+<td style="text-align: center;">3.49</td>
+<td style="text-align: center;"><strong>15.0</strong></td>
+<td>Elite</td>
+</tr>
+<tr>
+<td>Charlie Morton</td>
+<td style="text-align: center;">2023</td>
+<td style="text-align: center;">3.64</td>
+<td style="text-align: center;"><strong>13.1</strong></td>
+<td>Below&nbsp;average</td>
+</tr>
+</tbody>
+</table>
 <p><strong>To ERA, they're near-twins.</strong> OPE puts a full tier between them: Glasnow overpowered hitters and gave up almost nothing, while Morton worked harder for the same bottom-line ERA. Same result, different process — and reading that difference is exactly the dimension OPE is built to add.</p>
 <h2>Test 3 — does OPE agree with how we crown the best?</h2>
 <p>A brand-new stat earns trust not by overturning the experts, but by recognizing the same greatness they do. So I pulled every Cy Young winner from 2023–2025 and checked where each ranked in his own league by OPE:</p>
-<p><img width="680" alt="OPE agrees with the Cy Young voters" src="https://raw.githubusercontent.com/lch99310/Pitching-Efficiency/dccfbdebc5349c60be43e8e83efc6f0757aca43f/charts/09_cy_young.png" /></p>
+<p><img style="max-width:100%;height:auto;" alt="OPE agrees with the Cy Young voters" src="https://raw.githubusercontent.com/lch99310/Pitching-Efficiency/85de233a2a2c07df362e99652ccb2b3492b059d2/charts/09_cy_young.png" /></p>
 <p>The verdict is reassuring: every winner ranks among the most efficient starters in his league — most of them in the 90th percentile or better, all of them well above average. When the writers hand out the hardware, OPE is nodding along.</p>
 <p>What makes OPE worth having is that it adds a <em>distinct</em> lens rather than a redundant one — and the closest Cy Young race in recent memory shows how. In 2012 the AL award came down to two of the era's best seasons, David Price and Justin Verlander:</p>
-<p><img width="680" alt="data table" src="https://raw.githubusercontent.com/lch99310/Pitching-Efficiency/dccfbdebc5349c60be43e8e83efc6f0757aca43f/charts/t05_price_verlander.png" /></p>
+<table>
+<thead>
+<tr>
+<th>2012 AL</th>
+<th style="text-align: center;">ERA</th>
+<th style="text-align: center;">IP</th>
+<th style="text-align: center;">K</th>
+<th style="text-align: center;">WHIP</th>
+<th style="text-align: center;">OPE</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>David Price (winner)</td>
+<td style="text-align: center;">2.56</td>
+<td style="text-align: center;">211.0</td>
+<td style="text-align: center;">205</td>
+<td style="text-align: center;">1.10</td>
+<td style="text-align: center;"><strong>14.69</strong></td>
+</tr>
+<tr>
+<td>Justin Verlander</td>
+<td style="text-align: center;">2.64</td>
+<td style="text-align: center;">238.1</td>
+<td style="text-align: center;">239</td>
+<td style="text-align: center;">1.06</td>
+<td style="text-align: center;"><strong>14.47</strong></td>
+</tr>
+</tbody>
+</table>
 <p>Three great stats, three angles on the same brilliant pair. ERA gives Price the narrowest of edges. WAR leans toward Verlander, rewarding his extra 27 innings and 34 strikeouts. And OPE — a pure efficiency rate — lands with Price too: pitch for pitch, base for base, he was a shade more economical. None of them is "right," because they answer different questions. WAR asks <em>how much value</em> a pitcher piled up; OPE asks <em>how efficiently</em> he worked. <strong>OPE doesn't replace ERA or WAR — it pulls up a chair and adds the efficiency seat to the table</strong>, and here it happens to agree with the voters' call.</p>
 <h2>Test 4 — greatness is consistency</h2>
 <p>A one-season snapshot is one thing; the inner circle does it <em>every year</em>. But as we just saw, the run-scoring environment shifts across eras, so raw OPE isn't comparable between the 1990s and today. To trace careers honestly, we index each season to its own league: <strong>OPE+</strong>, where 100 is that year's league average and 115 means "15% better than the field."</p>
-<p><img width="680" alt="Era-adjusted OPE across Hall-of-Fame careers" src="https://raw.githubusercontent.com/lch99310/Pitching-Efficiency/dccfbdebc5349c60be43e8e83efc6f0757aca43f/charts/11_legends.png" /></p>
-<p><img width="680" alt="data table" src="https://raw.githubusercontent.com/lch99310/Pitching-Efficiency/dccfbdebc5349c60be43e8e83efc6f0757aca43f/charts/t06_legends.png" /></p>
+<p><img style="max-width:100%;height:auto;" alt="Era-adjusted OPE across Hall-of-Fame careers" src="https://raw.githubusercontent.com/lch99310/Pitching-Efficiency/85de233a2a2c07df362e99652ccb2b3492b059d2/charts/11_legends.png" /></p>
+<table>
+<thead>
+<tr>
+<th>Pitcher</th>
+<th style="text-align: center;">Career OPE+</th>
+<th style="text-align: center;">Span</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Mariano Rivera</td>
+<td style="text-align: center;"><strong>117</strong></td>
+<td style="text-align: center;">1995–2013</td>
+</tr>
+<tr>
+<td>Greg Maddux</td>
+<td style="text-align: center;"><strong>115</strong> (±6)</td>
+<td style="text-align: center;">1988–2008</td>
+</tr>
+<tr>
+<td>Clayton Kershaw</td>
+<td style="text-align: center;">114</td>
+<td style="text-align: center;">2008–2025</td>
+</tr>
+<tr>
+<td>Pedro Martínez</td>
+<td style="text-align: center;">111</td>
+<td style="text-align: center;">1993–2009</td>
+</tr>
+<tr>
+<td>Justin Verlander</td>
+<td style="text-align: center;">104</td>
+<td style="text-align: center;">2006–2025</td>
+</tr>
+</tbody>
+</table>
 <p>Every one of these arms lived <em>above</em> the league line for <strong>fifteen to twenty seasons straight</strong> — the mark of a Hall-of-Famer. Mariano Rivera sat 17% above average across two decades of relief. And Greg Maddux — fittingly, the patron saint of pitch efficiency — posted a 115 OPE+ with a standard deviation of just 6, meaning he was almost never anything but excellent. Sustained, era-beating OPE turns out to be a fingerprint of greatness.</p>
 <h2>The 2026 watch</h2>
 <p>With the 2026 season about 55% complete, here's the starter leaderboard so far:</p>
-<p><img width="680" alt="2026 OPE leaderboard" src="https://raw.githubusercontent.com/lch99310/Pitching-Efficiency/dccfbdebc5349c60be43e8e83efc6f0757aca43f/charts/12_ope_2026.png" /></p>
+<p><img style="max-width:100%;height:auto;" alt="2026 OPE leaderboard" src="https://raw.githubusercontent.com/lch99310/Pitching-Efficiency/85de233a2a2c07df362e99652ccb2b3492b059d2/charts/12_ope_2026.png" /></p>
 <p>OPE's most efficient starter to date is Brewers rookie phenom <strong>Jacob Misiorowski</strong> (16.5, 1.62 ERA). Notably, two-time defending Cy Young winner Skubal has slipped to 25th in OPE this year (3.06 ERA) — a real, measurable step back from his back-to-back peak.</p>
 <p><strong>One honest caveat:</strong> OPE is a <em>descriptive</em> stat, not a crystal ball. Year-to-year it's about as stable as ERA (both hover near 0.2), so read this board as "who has pitched most efficiently so far," not a locked-in prediction. If you want to forecast, pair OPE with FIP and xFIP.</p>
 <h2>What OPE is — and isn't</h2>
@@ -118,8 +425,10 @@
 <h3>Methodology &amp; reproducibility</h3>
 <p>Everything here is reproducible from this repo:</p>
 <ul>
-<li><strong>Data</strong> — <a href="https://github.com/lch99310/Pitching-Efficiency/tree/dccfbdebc5349c60be43e8e83efc6f0757aca43f/data"><code>data/</code></a>: raw pitching lines from the public MLB Stats API (<code>statsapi.mlb.com</code>) — regular season 2023–2025 plus 2026-to-date, Hall-of-Fame and finesse career lines, and per-season league totals used for the OPE+ baseline.</li>
-<li><strong>Fetch it yourself</strong> — <a href="https://github.com/lch99310/Pitching-Efficiency/tree/dccfbdebc5349c60be43e8e83efc6f0757aca43f/scripts/fetch_pe_data.py"><code>scripts/fetch_pe_data.py</code></a> (<code>python3 fetch_pe_data.py 2026</code>), <a href="https://github.com/lch99310/Pitching-Efficiency/tree/dccfbdebc5349c60be43e8e83efc6f0757aca43f/scripts/fetch_legends.py"><code>scripts/fetch_legends.py</code></a>, and <a href="https://github.com/lch99310/Pitching-Efficiency/tree/dccfbdebc5349c60be43e8e83efc6f0757aca43f/scripts/fetch_history.py"><code>scripts/fetch_history.py</code></a>. Standard library only, no dependencies.</li>
-<li><strong>Recompute &amp; re-plot</strong> — <a href="https://github.com/lch99310/Pitching-Efficiency/tree/dccfbdebc5349c60be43e8e83efc6f0757aca43f/scripts/analyze_pe.py"><code>scripts/analyze_pe.py</code></a> and <a href="https://github.com/lch99310/Pitching-Efficiency/tree/dccfbdebc5349c60be43e8e83efc6f0757aca43f/scripts/make_charts.py"><code>scripts/make_charts.py</code></a> (pandas + matplotlib).</li>
+<li><strong>Data</strong> — <a href="https://github.com/lch99310/Pitching-Efficiency/tree/85de233a2a2c07df362e99652ccb2b3492b059d2/data"><code>data/</code></a>: raw pitching lines from the public MLB Stats API (<code>statsapi.mlb.com</code>) — regular season 2023–2025 plus 2026-to-date, Hall-of-Fame and finesse career lines, and per-season league totals used for the OPE+ baseline.</li>
+<li><strong>Fetch it yourself</strong> — <a href="https://github.com/lch99310/Pitching-Efficiency/tree/85de233a2a2c07df362e99652ccb2b3492b059d2/scripts/fetch_pe_data.py"><code>scripts/fetch_pe_data.py</code></a> (<code>python3 fetch_pe_data.py 2026</code>), <a href="https://github.com/lch99310/Pitching-Efficiency/tree/85de233a2a2c07df362e99652ccb2b3492b059d2/scripts/fetch_legends.py"><code>scripts/fetch_legends.py</code></a>, and <a href="https://github.com/lch99310/Pitching-Efficiency/tree/85de233a2a2c07df362e99652ccb2b3492b059d2/scripts/fetch_history.py"><code>scripts/fetch_history.py</code></a>. Standard library only, no dependencies.</li>
+<li><strong>Recompute &amp; re-plot</strong> — <a href="https://github.com/lch99310/Pitching-Efficiency/tree/85de233a2a2c07df362e99652ccb2b3492b059d2/scripts/analyze_pe.py"><code>scripts/analyze_pe.py</code></a> and <a href="https://github.com/lch99310/Pitching-Efficiency/tree/85de233a2a2c07df362e99652ccb2b3492b059d2/scripts/make_charts.py"><code>scripts/make_charts.py</code></a> (pandas + matplotlib).</li>
 </ul>
-<p>Sample: pitcher-seasons with IP ≥ 50 (≈1,000 across 2023–2025). <code>outs</code> and <code>TB</code> come straight from the API; FIP uses a per-season constant so league FIP equals league ERA; <strong>OPE+</strong> indexes each season to that year's league-wide OPE. The original 2022 prototype of this idea is preserved in <a href="https://github.com/lch99310/Pitching-Efficiency/tree/dccfbdebc5349c60be43e8e83efc6f0757aca43f/archive"><code>archive/</code></a>.</p>
+<p>Sample: pitcher-seasons with IP ≥ 50 (≈1,000 across 2023–2025). <code>outs</code> and <code>TB</code> come straight from the API; FIP uses a per-season constant so league FIP equals league ERA; <strong>OPE+</strong> indexes each season to that year's league-wide OPE. The original 2022 prototype of this idea is preserved in <a href="https://github.com/lch99310/Pitching-Efficiency/tree/85de233a2a2c07df362e99652ccb2b3492b059d2/archive"><code>archive/</code></a>.</p>
+<hr />
+<p><em>A version of this article first appeared at <a href="https://chunghaolee.com/portfolio/outs_per_effort/">chunghaolee.com</a>. Data: MLB Stats API (statsapi.mlb.com), 2023&ndash;2025, ~1,000 pitcher-seasons, IP &ge; 50; full data and code are on <a href="https://github.com/lch99310/Pitching-Efficiency">GitHub</a>.</em></p>
