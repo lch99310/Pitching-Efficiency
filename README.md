@@ -1,6 +1,6 @@
 # Outs Per Effort (OPE): a simple pitching stat that sees what ERA misses
 
-*By Chung-Hao Lee · A baseball analytics side-project*
+*By Chung-Hao Lee*
 *Data: MLB Stats API, 2023–2025 (≈1,000 pitcher-seasons, IP ≥ 50) · [中文版 →](README.cn.md)*
 
 ---
@@ -49,18 +49,6 @@ The `4` has a one-sentence translation any fan can hold onto:
 
 So a single is worth about four squandered pitches; a home run, sixteen — roughly a full batter's worth of work. **Home runs are punished four times as hard as singles, automatically — the thing ERA can't do.**
 
-### See it in one inning
-
-Picture three relievers who each throw a *scoreless* inning — 3 outs, nobody scores, an identical 0.00 ERA. To ERA they are triplets. Watch OPE pull them apart:
-
-![Three scoreless innings, three different OPEs](charts/01_example.png)
-
-- **Pitcher A** needs 15 pitches and gives up a harmless single → OPE **15.8**. Our baseline.
-- **Pitcher B** does the same job on *12 pitches* → OPE **18.8**. He was more **economical**, so he rates higher.
-- **Pitcher C** also uses 15 pitches, but the hit he allows is a *double* → OPE **13.0**. Same effort, more **damage**, so he rates lower.
-
-That's the whole metric in one picture: reward the pitcher who spends fewer pitches, penalize the one who concedes more bases — even when the scoreboard, and ERA, can't tell any of them apart.
-
 ### Why four?
 
 The weight isn't arbitrary — it clears two independent bars.
@@ -71,6 +59,18 @@ The weight isn't arbitrary — it clears two independent bars.
 And it's robust: for any weight from 2 to 6, the leaderboard barely moves (Spearman rank agreement ≥ 0.97). The result isn't an artifact of a hand-tuned constant.
 
 ![Why the weight is 4](charts/02_why_w4.png)
+
+### See it in one inning
+
+That's the theory; here's the feel of it. Picture three relievers who each throw a *scoreless* inning — 3 outs, nobody scores, an identical 0.00 ERA. To ERA they are triplets. Watch OPE pull them apart:
+
+![Three scoreless innings, three different OPEs](charts/01_example.png)
+
+- **Pitcher A** needs 15 pitches and gives up a harmless single → OPE **15.8**. Our baseline.
+- **Pitcher B** does the same job on *12 pitches* → OPE **18.8**. He was more **economical**, so he rates higher.
+- **Pitcher C** also uses 15 pitches, but the hit he allows is a *double* → OPE **13.0**. Same effort, more **damage**, so he rates lower.
+
+That's the whole metric in one picture: reward the pitcher who spends fewer pitches, penalize the one who concedes more bases — even when the scoreboard, and ERA, can't tell any of them apart.
 
 ## Test 1 — OPE is fair to starters and relievers alike
 
